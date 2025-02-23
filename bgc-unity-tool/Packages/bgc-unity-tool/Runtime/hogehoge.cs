@@ -1,4 +1,4 @@
-namespace bgc.unity.tool
+namespace BgcUnityTool
 {
     using UnityEngine;
     using WebSocketSharp;
