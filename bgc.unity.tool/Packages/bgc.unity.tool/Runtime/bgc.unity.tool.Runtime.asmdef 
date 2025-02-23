@@ -1,12 +1,17 @@
 {
     "name": "bgc.unity.tool.Runtime",
+    "rootNamespace": "bgc.unity.tool.Runtime",
     "references": [],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor",
+        "Runtime"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "versionDefines": [
+    ],
     "noEngineReferences": false
 }
