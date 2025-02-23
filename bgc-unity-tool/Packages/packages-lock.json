@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "bgc-unity-tool": {
-      "version": "file:bgc-unity-tool",
+    "bgc.unity.tool": {
+      "version": "file:bgc.unity.tool",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}
