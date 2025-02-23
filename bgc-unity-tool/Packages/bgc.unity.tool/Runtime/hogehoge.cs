@@ -1,7 +1,7 @@
 using UnityEngine;
 using WebSocketSharp;
 
-namespace BgcUnityTool
+namespace bgc.unity.tool
 {
     public class hogehoge : MonoBehaviour
     {
