@@ -1,8 +1,8 @@
+using UnityEngine;
+using WebSocketSharp;
+
 namespace BgcUnityTool
 {
-    using UnityEngine;
-    using WebSocketSharp;
-
     public class hogehoge : MonoBehaviour
     {
         // 固定の WebSocket 接続先 URL
