@@ -6,10 +6,6 @@ public class APIKeySettingsWindow : EditorWindow
     private APIKeySettings settings;
     private const string assetPath = "Assets/APIKeySettings.asset";
 
-    [MenuItem("自作メニュー/Validate")]
-private static void Validate() { }
-
-
     [MenuItem("Window/API Key Settings")]
     public static void ShowWindow()
     {
