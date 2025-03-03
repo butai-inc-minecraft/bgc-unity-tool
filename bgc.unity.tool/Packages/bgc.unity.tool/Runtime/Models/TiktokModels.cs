@@ -77,4 +77,39 @@ namespace bgc.unity.tool.Models
         public int repeat_end;
         public int gift_type;
     }
+
+    // 部屋の視聴者情報メッセージの型を定義
+    [Serializable]
+    public class RoomUserMessage
+    {
+        public string type;
+        public TopViewer[] topViewers;
+        public int viewerCount;
+    }
+
+    [Serializable]
+    public class TopViewer
+    {
+        public TikTokUser user;
+        public int coinCount;
+    }
+
+    [Serializable]
+    public class TikTokUser
+    {
+        public string userId;
+        public string secUid;
+        public string uniqueId;
+        public string nickname;
+        public string profilePictureUrl;
+        public UserBadge[] userBadges;
+        public int[] userSceneTypes;
+        public UserDetails userDetails;
+        public bool isModerator;
+        public bool isNewGifter;
+        public bool isSubscriber;
+        public int? topGifterRank;
+        public int gifterLevel;
+        public int teamMemberLevel;
+    }
 } 

@@ -93,6 +93,9 @@ namespace bgc.unity.tool
         // ギフトメッセージ受信時に発火するイベント
         public static event Action<GiftMessage> OnGiftReceived;
         
+        // 部屋の視聴者情報受信時に発火するイベント
+        public static event Action<RoomUserMessage> OnRoomUserReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -106,6 +109,7 @@ namespace bgc.unity.tool
             
             // WebSocketサービスを初期化して接続
             TiktokWebSocketService.OnGiftReceived += HandleGiftReceived;
+            TiktokWebSocketService.OnRoomUserReceived += HandleRoomUserReceived;
             TiktokWebSocketService.OnConnectionError += HandleConnectionError;
             TiktokWebSocketService.Connect();
         }
@@ -121,6 +125,13 @@ namespace bgc.unity.tool
         {
             // 外部のイベントハンドラに転送
             OnGiftReceived?.Invoke(giftMessage);
+        }
+        
+        // 部屋の視聴者情報を受信したときの処理
+        private void HandleRoomUserReceived(RoomUserMessage roomUserMessage)
+        {
+            // 外部のイベントハンドラに転送
+            OnRoomUserReceived?.Invoke(roomUserMessage);
         }
         
         // 接続エラーが発生したときの処理
@@ -148,6 +159,7 @@ namespace bgc.unity.tool
         {
             // イベントハンドラを解除
             TiktokWebSocketService.OnGiftReceived -= HandleGiftReceived;
+            TiktokWebSocketService.OnRoomUserReceived -= HandleRoomUserReceived;
             TiktokWebSocketService.OnConnectionError -= HandleConnectionError;
             
             // WebSocketをクリーンアップ

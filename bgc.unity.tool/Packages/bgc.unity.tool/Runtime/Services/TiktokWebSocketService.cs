@@ -14,6 +14,9 @@ namespace bgc.unity.tool.Services
         // ギフトメッセージ受信時に発火するイベント
         public static event Action<GiftMessage> OnGiftReceived;
         
+        // 部屋の視聴者情報受信時に発火するイベント
+        public static event Action<RoomUserMessage> OnRoomUserReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -141,7 +144,7 @@ namespace bgc.unity.tool.Services
             Debug.Log("API キーと Username を送信しました。");
         }
         
-        // 受信したメッセージを解析して、ギフトメッセージの場合はイベントを発火する
+        // 受信したメッセージを解析して、メッセージタイプに応じたイベントを発火する
         private static void HandleWebSocketMessage(string message)
         {
             try
@@ -154,12 +157,26 @@ namespace bgc.unity.tool.Services
                     return;
                 }
                 
-                // JSON を GiftMessage 型に変換
-                GiftMessage giftMsg = JsonUtility.FromJson<GiftMessage>(message);
-                if (giftMsg != null && giftMsg.type == "gift")
+                // メッセージタイプの確認
+                if (message.Contains("\"type\":\"gift\"") || message.Contains("\"type\": \"gift\""))
                 {
-                    Debug.Log("ギフトメッセージを受信: " + giftMsg.giftName);
-                    OnGiftReceived?.Invoke(giftMsg);
+                    // ギフトメッセージの処理
+                    GiftMessage giftMsg = JsonUtility.FromJson<GiftMessage>(message);
+                    if (giftMsg != null)
+                    {
+                        Debug.Log("ギフトメッセージを受信: " + giftMsg.giftName);
+                        OnGiftReceived?.Invoke(giftMsg);
+                    }
+                }
+                else if (message.Contains("\"type\":\"roomUser\"") || message.Contains("\"type\": \"roomUser\""))
+                {
+                    // 部屋の視聴者情報メッセージの処理
+                    RoomUserMessage roomUserMsg = JsonUtility.FromJson<RoomUserMessage>(message);
+                    if (roomUserMsg != null)
+                    {
+                        Debug.Log($"部屋の視聴者情報を受信: 視聴者数 {roomUserMsg.viewerCount}人");
+                        OnRoomUserReceived?.Invoke(roomUserMsg);
+                    }
                 }
                 else if (TiktokSettings.Instance.VerboseLogging)
                 {
@@ -169,7 +186,7 @@ namespace bgc.unity.tool.Services
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("WebSocketメッセージの解析に失敗: " + ex.Message);
+                Debug.LogWarning("WebSocketメッセージの解析に失敗: " + ex.Message + "\nメッセージ: " + message);
             }
         }
         
