@@ -334,18 +334,6 @@ public class Handler : MonoBehaviour
         
         // ログに表示
         Debug.Log($"👁 視聴者数: {currentViewerCount}人");
-        
-        // トップ視聴者の情報がある場合は処理
-        if (roomUserMessage.topViewers != null && roomUserMessage.topViewers.Length > 0)
-        {
-            foreach (var viewer in roomUserMessage.topViewers)
-            {
-                if (viewer.user != null)
-                {
-                    Debug.Log($"🏆 トップ視聴者: {viewer.user.nickname}さん (コイン: {viewer.coinCount})");
-                }
-            }
-        }
     }
     
     // 視聴者数のUI更新
