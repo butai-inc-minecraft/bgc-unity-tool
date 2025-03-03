@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: ca9359415bdcb42e38d2d62ec1f5c5a4
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - usernameInputField: {fileID: 9014965920418038232, guid: e415525fd5d93420d9aeb24579a8b781, type: 3}
+  - connectButton: {fileID: 9097980325171588867, guid: 53b7a16ae199b43459b629534ebe8afb, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
