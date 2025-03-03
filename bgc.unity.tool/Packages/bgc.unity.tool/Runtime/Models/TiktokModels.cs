@@ -1,9 +1,6 @@
-using UnityEngine;
 using System;
-using bgc.unity.tool.Models;
-using bgc.unity.tool.Services;
 
-namespace bgc.unity.tool
+namespace bgc.unity.tool.Models
 {
     // APIキー設定用のクラス
     [Serializable]
@@ -87,48 +84,4 @@ namespace bgc.unity.tool
         public int repeat_end;
         public int gift_type;
     }
-
-    public class BgcTiktokWebSocket : MonoBehaviour
-    {
-        // ギフトメッセージ受信時に発火するイベント
-        public static event Action<GiftMessage> OnGiftReceived;
-
-        void Start()
-        {
-            // APIキーを読み込む
-            ApiKeyService.LoadApiKey();
-            
-            // WebSocketサービスを初期化して接続
-            TiktokWebSocketService.OnGiftReceived += HandleGiftReceived;
-            TiktokWebSocketService.Connect();
-        }
-
-        // 外部から username を設定するための関数
-        public static void SetUsername(string username)
-        {
-            TiktokWebSocketService.SetUsername(username);
-        }
-
-        // ギフトメッセージを受信したときの処理
-        private void HandleGiftReceived(GiftMessage giftMessage)
-        {
-            // 外部のイベントハンドラに転送
-            OnGiftReceived?.Invoke(giftMessage);
-        }
-
-        // WebSocketを切断する
-        public void Disconnect()
-        {
-            TiktokWebSocketService.Disconnect();
-        }
-
-        void OnDestroy()
-        {
-            // イベントハンドラを解除
-            TiktokWebSocketService.OnGiftReceived -= HandleGiftReceived;
-            
-            // WebSocketをクリーンアップ
-            TiktokWebSocketService.Cleanup();
-        }
-    }
-}
+} 

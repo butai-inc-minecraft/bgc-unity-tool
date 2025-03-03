@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using bgc.unity.tool;
+using bgc.unity.tool.Services;
 
 public class Handler : MonoBehaviour
 {
@@ -85,8 +86,8 @@ public class Handler : MonoBehaviour
         if (bgcTiktokWebSocket != null)
         {
             // username を設定して接続開始
-            BgcTiktokWebSocket.SetUsername(username);
-            bgcTiktokWebSocket.Connect();
+            TiktokWebSocketService.SetUsername(username);
+            TiktokWebSocketService.Connect();
             Debug.Log("Connect ボタンが押されました！");
         }
         else
@@ -100,7 +101,7 @@ public class Handler : MonoBehaviour
     {
         if (bgcTiktokWebSocket != null)
         {
-            bgcTiktokWebSocket.Disconnect();
+            TiktokWebSocketService.Disconnect();
         }
         else
         {
