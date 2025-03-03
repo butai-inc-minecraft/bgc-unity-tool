@@ -2,13 +2,6 @@ using System;
 
 namespace bgc.unity.tool.Models
 {
-    // APIキー設定用のクラス
-    [Serializable]
-    public class ApiKeyConfig
-    {
-        public string apiKey;
-    }
-
     // 受信するギフトメッセージの型を定義
     [Serializable]
     public class GiftMessage

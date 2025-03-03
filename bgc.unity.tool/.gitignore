@@ -73,6 +73,6 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-# API Key Settings 
-Packages/bgc.unity.tool/Runtime/apiKey.json
-Packages/bgc.unity.tool/Runtime/apiKey.json.meta
+# TikTok Settings
+Assets/Resources/TiktokSettings.asset
+Assets/Resources/TiktokSettings.asset.meta

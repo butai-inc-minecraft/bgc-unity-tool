@@ -15,6 +15,12 @@ public class Handler : MonoBehaviour
     
     // オプション：ボタンを使う場合はインスペクターでアサイン
     [SerializeField] private Button connectButton;
+    
+    // エラーメッセージを表示するテキスト
+    [SerializeField] private Text errorMessageText;
+    
+    // 接続状態を表示するテキスト
+    [SerializeField] private Text connectionStatusText;
 
     private void Awake()
     {
@@ -34,10 +40,22 @@ public class Handler : MonoBehaviour
                 Debug.LogError("BgcTiktokWebSocket コンポーネントの追加に失敗しました。");
             }
         }
+        
+        // エラーメッセージテキストを初期化
+        if (errorMessageText != null)
+        {
+            errorMessageText.text = "";
+        }
+        
+        // 接続状態テキストを初期化
+        UpdateConnectionStatus();
     }
 
     private void Start()
     {
+        // イベントハンドラを登録
+        BgcTiktokWebSocket.OnConnectionError += HandleConnectionError;
+        
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
         {
@@ -46,16 +64,18 @@ public class Handler : MonoBehaviour
 
         // スクリプト開始時に自動で接続する
         // ※ InputField に初期値が設定されている必要があります
-        if (usernameInputField != null)
+        if (usernameInputField != null && !string.IsNullOrEmpty(usernameInputField.text))
         {
             string username = usernameInputField.text;
             Debug.Log("自動接続: username = " + username);
             ConnectToWebSocket(username);
         }
-        else
-        {
-            Debug.LogError("usernameInputField がアサインされていません。");
-        }
+    }
+    
+    private void Update()
+    {
+        // 接続状態を更新
+        UpdateConnectionStatus();
     }
 
     // ボタンから呼び出される場合の処理
@@ -71,41 +91,75 @@ public class Handler : MonoBehaviour
         else
         {
             Debug.LogError("usernameInputField がアサインされていません。");
+            ShowErrorMessage("ユーザー名入力フィールドがアサインされていません。");
         }
     }
 
     // 指定された username で接続を試みる
     private void ConnectToWebSocket(string username)
     {
+        // エラーメッセージをクリア
+        ClearErrorMessage();
+        
         if (string.IsNullOrEmpty(username))
         {
             Debug.LogWarning("Username が空です。接続できません。");
+            ShowErrorMessage("ユーザー名を入力してください。");
             return;
         }
         
-        if (bgcTiktokWebSocket != null)
-        {
-            // username を設定して接続開始
-            TiktokWebSocketService.SetUsername(username);
-            TiktokWebSocketService.Connect();
-            Debug.Log("Connect ボタンが押されました！");
-        }
-        else
-        {
-            Debug.LogError("BgcTiktokWebSocket が初期化されていません。\nUnityEngine.Debug:LogError (object)\nHandler:ConnectToWebSocket (string) (at Assets/Scenes/Connect.cs:84)\nHandler:OnConnectButtonClicked () (at Assets/Scenes/Connect.cs:58)\nUnityEngine.EventSystems.EventSystem:Update () (at ./Library/PackageCache/com.unity.ugui@03407c6d8751/Runtime/UGUI/EventSystem/EventSystem.cs:530)");
-        }
+        // username を設定して接続開始
+        TiktokWebSocketService.SetUsername(username);
+        TiktokWebSocketService.Connect();
+        Debug.Log("接続を開始しました。");
     }
 
     // 必要に応じて切断処理を呼び出す
     private void DisconnectFromWebSocket()
     {
-        if (bgcTiktokWebSocket != null)
+        TiktokWebSocketService.Disconnect();
+        Debug.Log("切断しました。");
+        UpdateConnectionStatus();
+    }
+    
+    // 接続エラーを処理する
+    private void HandleConnectionError(string errorMessage)
+    {
+        ShowErrorMessage(errorMessage);
+    }
+    
+    // エラーメッセージを表示する
+    private void ShowErrorMessage(string message)
+    {
+        if (errorMessageText != null)
         {
-            TiktokWebSocketService.Disconnect();
+            errorMessageText.text = "エラー: " + message;
+            errorMessageText.color = Color.red;
         }
-        else
+    }
+    
+    // エラーメッセージをクリアする
+    private void ClearErrorMessage()
+    {
+        if (errorMessageText != null)
         {
-            Debug.LogError("BgcTiktokWebSocket が初期化されていません。");
+            errorMessageText.text = "";
         }
+    }
+    
+    // 接続状態を更新する
+    private void UpdateConnectionStatus()
+    {
+        if (connectionStatusText != null)
+        {
+            connectionStatusText.text = "接続状態: " + (BgcTiktokWebSocket.IsConnected ? "接続中" : "未接続");
+            connectionStatusText.color = BgcTiktokWebSocket.IsConnected ? Color.green : Color.gray;
+        }
+    }
+    
+    private void OnDestroy()
+    {
+        // イベントハンドラを解除
+        BgcTiktokWebSocket.OnConnectionError -= HandleConnectionError;
     }
 }

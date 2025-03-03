@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using WebSocketSharp;
 using bgc.unity.tool.Models;
+using bgc.unity.tool.ScriptableObjects;
 
 namespace bgc.unity.tool.Services
 {
@@ -13,25 +14,63 @@ namespace bgc.unity.tool.Services
         // ギフトメッセージ受信時に発火するイベント
         public static event Action<GiftMessage> OnGiftReceived;
         
+        // 接続エラー発生時に発火するイベント
+        public static event Action<string> OnConnectionError;
+        
         private static WebSocket ws;
         private static bool isConnected = false;
         
-        // 外部から設定可能な username（初期値 "default" なら接続しない）
-        public static string Username { get; private set; } = "default";
+        // 外部から設定可能な username（初期値はScriptableObjectから取得）
+        private static string username = "default";
+        public static string Username 
+        { 
+            get => username;
+            private set => username = value;
+        }
+        
+        // 初期化処理
+        static TiktokWebSocketService()
+        {
+            // ScriptableObjectから設定を読み込む
+            TiktokSettings settings = TiktokSettings.Instance;
+            if (settings != null)
+            {
+                Username = settings.DefaultUsername;
+                if (settings.VerboseLogging)
+                {
+                    Debug.Log("TiktokWebSocketService: 詳細ログが有効です");
+                }
+            }
+        }
         
         // 外部から username を設定するための関数
-        public static void SetUsername(string username)
+        public static void SetUsername(string newUsername)
         {
-            Username = username;
+            Username = newUsername;
             Debug.Log("Username が設定されました: " + Username);
         }
         
+        // 接続状態を取得するプロパティ
+        public static bool IsConnected => isConnected;
+        
         public static void Connect()
         {
+            // APIキーが設定されているか確認
+            string apiKey = ApiKeyService.ApiKey;
+            if (string.IsNullOrEmpty(apiKey) || apiKey == "xxxxxxxxxxx")
+            {
+                string errorMessage = "APIキーが設定されていないため、接続できません。TikTok設定ファイルでAPIキーを設定してください。";
+                Debug.LogError(errorMessage);
+                OnConnectionError?.Invoke(errorMessage);
+                return;
+            }
+            
             // username が "default" の場合は接続しない
             if (Username == "default")
             {
-                Debug.LogWarning("Usernameが'default'のため、接続しません。");
+                string errorMessage = "Usernameが'default'のため、接続しません。有効なユーザー名を設定してください。";
+                Debug.LogWarning(errorMessage);
+                OnConnectionError?.Invoke(errorMessage);
                 return;
             }
 
@@ -57,24 +96,36 @@ namespace bgc.unity.tool.Services
                 };
 
                 ws.OnMessage += (sender, e) => {
-                    // Debug.Log("WebSocketメッセージを受信: " + e.Data);
+                    // 詳細ログが有効な場合のみ出力
+                    if (TiktokSettings.Instance.VerboseLogging)
+                    {
+                        Debug.Log("WebSocketメッセージを受信: " + e.Data);
+                    }
                     HandleWebSocketMessage(e.Data);
                 };
 
                 ws.OnError += (sender, e) => {
-                    Debug.LogError("WebSocketエラー: " + e.Message);
+                    string errorMessage = "WebSocketエラー: " + e.Message;
+                    Debug.LogError(errorMessage);
+                    OnConnectionError?.Invoke(errorMessage);
                 };
 
                 ws.OnClose += (sender, e) => {
                     isConnected = false;
                     Debug.Log("WebSocketサーバーから切断されました。理由: " + e.Reason);
+                    if (!string.IsNullOrEmpty(e.Reason))
+                    {
+                        OnConnectionError?.Invoke("切断理由: " + e.Reason);
+                    }
                 };
 
                 ws.Connect();
             }
             catch (Exception e)
             {
-                Debug.LogError("WebSocketサーバーへの接続に失敗しました: " + e.Message);
+                string errorMessage = "WebSocketサーバーへの接続に失敗しました: " + e.Message;
+                Debug.LogError(errorMessage);
+                OnConnectionError?.Invoke(errorMessage);
             }
         }
         
@@ -95,6 +146,14 @@ namespace bgc.unity.tool.Services
         {
             try
             {
+                // エラーメッセージの確認
+                if (message.Contains("error") || message.Contains("Error") || message.Contains("ERROR"))
+                {
+                    Debug.LogError("サーバーからエラーメッセージを受信: " + message);
+                    OnConnectionError?.Invoke("サーバーエラー: " + message);
+                    return;
+                }
+                
                 // JSON を GiftMessage 型に変換
                 GiftMessage giftMsg = JsonUtility.FromJson<GiftMessage>(message);
                 if (giftMsg != null && giftMsg.type == "gift")
@@ -102,7 +161,7 @@ namespace bgc.unity.tool.Services
                     Debug.Log("ギフトメッセージを受信: " + giftMsg.giftName);
                     OnGiftReceived?.Invoke(giftMsg);
                 }
-                else
+                else if (TiktokSettings.Instance.VerboseLogging)
                 {
                     Debug.Log("他のメッセージを受信: " + message);
                 }
