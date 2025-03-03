@@ -90,31 +90,37 @@ namespace bgc.unity.tool
 
     public class BgcTiktokWebSocket : MonoBehaviour
     {
-        // ギフトメッセージ受信時に発火するイベント
+        // 接続状態
+        public static bool IsConnected => TiktokWebSocketService.IsConnected;
+        
+        // ギフト受信時に発火するイベント
         public static event Action<GiftMessage> OnGiftReceived;
         
         // 部屋の視聴者情報受信時に発火するイベント
         public static event Action<RoomUserMessage> OnRoomUserReceived;
         
-        // いいねメッセージ受信時に発火するイベント
+        // いいね受信時に発火するイベント
         public static event Action<LikeMessage> OnLikeReceived;
+        
+        // チャット受信時に発火するイベント
+        public static event Action<ChatMessage> OnChatReceived;
         
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
-        // 接続状態を取得するプロパティ
-        public static bool IsConnected => TiktokWebSocketService.IsConnected;
-
         void Start()
         {
             // APIキーを読み込む
             ApiKeyService.LoadApiKey();
             
-            // WebSocketサービスを初期化して接続
+            // TiktokWebSocketServiceのイベントをリッスン
             TiktokWebSocketService.OnGiftReceived += HandleGiftReceived;
             TiktokWebSocketService.OnRoomUserReceived += HandleRoomUserReceived;
             TiktokWebSocketService.OnLikeReceived += HandleLikeReceived;
+            TiktokWebSocketService.OnChatReceived += HandleChatReceived;
             TiktokWebSocketService.OnConnectionError += HandleConnectionError;
+            
+            // WebSocketサービスを初期化して接続
             TiktokWebSocketService.Connect();
         }
 
@@ -145,6 +151,13 @@ namespace bgc.unity.tool
             OnLikeReceived?.Invoke(likeMessage);
         }
         
+        // チャットメッセージを受信したときの処理
+        private void HandleChatReceived(ChatMessage chatMessage)
+        {
+            // 外部のイベントハンドラに転送
+            OnChatReceived?.Invoke(chatMessage);
+        }
+        
         // 接続エラーが発生したときの処理
         private void HandleConnectionError(string errorMessage)
         {
@@ -172,6 +185,7 @@ namespace bgc.unity.tool
             TiktokWebSocketService.OnGiftReceived -= HandleGiftReceived;
             TiktokWebSocketService.OnRoomUserReceived -= HandleRoomUserReceived;
             TiktokWebSocketService.OnLikeReceived -= HandleLikeReceived;
+            TiktokWebSocketService.OnChatReceived -= HandleChatReceived;
             TiktokWebSocketService.OnConnectionError -= HandleConnectionError;
             
             // WebSocketをクリーンアップ

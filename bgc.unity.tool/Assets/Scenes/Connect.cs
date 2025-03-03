@@ -5,7 +5,7 @@ using UnityEngine.UI;
 using bgc.unity.tool;
 using bgc.unity.tool.Services;
 using bgc.unity.tool.Models;
-using bgc.unity.tool.Utils;
+// using bgc.unity.tool.Utils;
 
 public class Handler : MonoBehaviour
 {
@@ -23,6 +23,15 @@ public class Handler : MonoBehaviour
     
     // 接続状態を表示するテキスト
     [SerializeField] private Text connectionStatusText;
+    
+    // チャットメッセージを表示するテキスト（オプション）
+    [SerializeField] private Text chatMessageText;
+    
+    // 表示する最大チャットメッセージ数
+    [SerializeField] private int maxChatMessages = 5;
+    
+    // チャットメッセージのリスト
+    private List<string> recentChatMessages = new List<string>();
     
     // ユーザーごとの累積いいね数を記録する辞書
     private Dictionary<string, int> userTotalLikes = new Dictionary<string, int>();
@@ -54,6 +63,12 @@ public class Handler : MonoBehaviour
         
         // 接続状態テキストを初期化
         UpdateConnectionStatus();
+        
+        // チャットメッセージテキストを初期化
+        if (chatMessageText != null)
+        {
+            chatMessageText.text = "";
+        }
     }
 
     private void Start()
@@ -61,6 +76,7 @@ public class Handler : MonoBehaviour
         // イベントハンドラを登録
         BgcTiktokWebSocket.OnConnectionError += HandleConnectionError;
         BgcTiktokWebSocket.OnLikeReceived += HandleLikeReceived;
+        BgcTiktokWebSocket.OnChatReceived += HandleChatReceived;
         
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
@@ -140,16 +156,75 @@ public class Handler : MonoBehaviour
         string userId = likeMessage.userId;
         string nickname = likeMessage.nickname;
         int likeCount = likeMessage.likeCount;
-        int totalLikeCount = likeMessage.totalLikeCount;
         
-        // 前回の累積いいね数を算出
-        int previousTotal = totalLikeCount - likeCount;
+        // 前回の累積いいね数を取得（存在しない場合は0）
+        int previousTotal = 0;
+        if (userTotalLikes.ContainsKey(userId))
+        {
+            previousTotal = userTotalLikes[userId];
+        }
         
-        // 今回の累積いいね数
-        int currentTotal = totalLikeCount;
+        // 今回の累積いいね数を計算
+        int currentTotal = previousTotal + likeCount;
         
         // 前回と今回の累積いいね数の間に100の倍数があるかチェック
         CheckLikeThresholds(userId, nickname, previousTotal, currentTotal, 100);
+        
+        // 累積いいね数を更新
+        userTotalLikes[userId] = currentTotal;
+    }
+    
+    // チャットメッセージを受信したときの処理
+    private void HandleChatReceived(ChatMessage chatMessage)
+    {
+        string userId = chatMessage.userId;
+        string nickname = chatMessage.nickname;
+        string comment = chatMessage.comment;
+        
+        // チャットメッセージをログに表示
+        Debug.Log($"💬 {nickname}: {comment}");
+        
+        // チャットメッセージをリストに追加
+        AddChatMessage($"{nickname}: {comment}");
+        
+        // チャットメッセージのUI更新
+        UpdateChatUI();
+        
+        // 特定のキーワードに反応する例
+        if (comment.Contains("おめでとう") || comment.Contains("congratulations"))
+        {
+            Debug.Log($"🎊 {nickname}さんからお祝いのメッセージが届きました！");
+            // ここにお祝いメッセージを受信したときの処理を追加
+        }
+        
+        if (comment.Contains("質問") || comment.Contains("question"))
+        {
+            Debug.Log($"❓ {nickname}さんから質問が届きました！");
+            // ここに質問を受信したときの処理を追加
+        }
+    }
+    
+    // チャットメッセージをリストに追加
+    private void AddChatMessage(string message)
+    {
+        recentChatMessages.Add(message);
+        
+        // 最大メッセージ数を超えた場合、古いメッセージを削除
+        while (recentChatMessages.Count > maxChatMessages)
+        {
+            recentChatMessages.RemoveAt(0);
+        }
+    }
+    
+    // チャットメッセージのUI更新
+    private void UpdateChatUI()
+    {
+        if (chatMessageText != null)
+        {
+            // リスト内のすべてのメッセージを結合
+            string allMessages = string.Join("\n", recentChatMessages);
+            chatMessageText.text = allMessages;
+        }
     }
     
     // いいねの閾値チェックを行うメソッド
@@ -172,7 +247,19 @@ public class Handler : MonoBehaviour
                 // 100いいねごとに異なるメッセージを表示
                 if (achievedCount == 100)
                 {
-                    Debug.Log($"🎉 {nickname}さんが100いいねごとを達成しました！ 🎉");
+                    Debug.Log($"🎉 {nickname}さんが100いいねを達成しました！ 🎉");
+                }
+                else if (achievedCount == 200)
+                {
+                    Debug.Log($"🎊 {nickname}さんが200いいねを達成しました！すごい！ 🎊");
+                }
+                else if (achievedCount == 500)
+                {
+                    Debug.Log($"💯 {nickname}さんが500いいねを達成しました！素晴らしい！ 💯");
+                }
+                else if (achievedCount == 1000)
+                {
+                    Debug.Log($"🏆 {nickname}さんが1000いいねを達成しました！伝説級！ 🏆");
                 }
                 else
                 {
@@ -218,10 +305,19 @@ public class Handler : MonoBehaviour
         Debug.Log("すべてのユーザーのいいね数をリセットしました。");
     }
     
+    // チャットメッセージをクリア
+    public void ClearChatMessages()
+    {
+        recentChatMessages.Clear();
+        UpdateChatUI();
+        Debug.Log("チャットメッセージをクリアしました。");
+    }
+    
     private void OnDestroy()
     {
         // イベントハンドラを解除
         BgcTiktokWebSocket.OnConnectionError -= HandleConnectionError;
         BgcTiktokWebSocket.OnLikeReceived -= HandleLikeReceived;
+        BgcTiktokWebSocket.OnChatReceived -= HandleChatReceived;
     }
 }

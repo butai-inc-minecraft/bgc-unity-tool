@@ -20,6 +20,9 @@ namespace bgc.unity.tool.Services
         // いいねメッセージ受信時に発火するイベント
         public static event Action<LikeMessage> OnLikeReceived;
         
+        // チャットメッセージ受信時に発火するイベント
+        public static event Action<ChatMessage> OnChatReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -167,7 +170,7 @@ namespace bgc.unity.tool.Services
                     GiftMessage giftMsg = JsonUtility.FromJson<GiftMessage>(message);
                     if (giftMsg != null)
                     {
-                        Debug.Log("ギフトメッセージを受信: " + giftMsg.giftName);
+                        // Debug.Log("ギフトメッセージを受信: " + giftMsg.giftName);
                         OnGiftReceived?.Invoke(giftMsg);
                     }
                 }
@@ -177,7 +180,7 @@ namespace bgc.unity.tool.Services
                     RoomUserMessage roomUserMsg = JsonUtility.FromJson<RoomUserMessage>(message);
                     if (roomUserMsg != null)
                     {
-                        Debug.Log($"部屋の視聴者情報を受信: 視聴者数 {roomUserMsg.viewerCount}人");
+                        // Debug.Log($"部屋の視聴者情報を受信: 視聴者数 {roomUserMsg.viewerCount}人");
                         OnRoomUserReceived?.Invoke(roomUserMsg);
                     }
                 }
@@ -187,8 +190,18 @@ namespace bgc.unity.tool.Services
                     LikeMessage likeMsg = JsonUtility.FromJson<LikeMessage>(message);
                     if (likeMsg != null)
                     {
-                        Debug.Log($"いいねメッセージを受信: {likeMsg.nickname}さんが{likeMsg.likeCount}いいねしました (合計: {likeMsg.totalLikeCount})");
+                        // Debug.Log($"いいねメッセージを受信: {likeMsg.nickname}さんが{likeMsg.likeCount}いいねしました (合計: {likeMsg.totalLikeCount})");
                         OnLikeReceived?.Invoke(likeMsg);
+                    }
+                }
+                else if (message.Contains("\"type\":\"chat\"") || message.Contains("\"type\": \"chat\""))
+                {
+                    // チャットメッセージの処理
+                    ChatMessage chatMsg = JsonUtility.FromJson<ChatMessage>(message);
+                    if (chatMsg != null)
+                    {
+                        // Debug.Log($"チャットメッセージを受信: {chatMsg.nickname}さん「{chatMsg.comment}」");
+                        OnChatReceived?.Invoke(chatMsg);
                     }
                 }
                 else if (TiktokSettings.Instance.VerboseLogging)
@@ -199,7 +212,7 @@ namespace bgc.unity.tool.Services
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("WebSocketメッセージの解析に失敗: " + ex.Message + "\nメッセージ: " + message);
+                Debug.LogError("メッセージの処理中にエラーが発生しました: " + ex.Message);
             }
         }
         
