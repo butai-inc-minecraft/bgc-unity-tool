@@ -27,6 +27,9 @@ public class Handler : MonoBehaviour
     // チャットメッセージを表示するテキスト（オプション）
     [SerializeField] private Text chatMessageText;
     
+    // 視聴者数を表示するテキスト
+    [SerializeField] private Text viewerCountText;
+    
     // 表示する最大チャットメッセージ数
     [SerializeField] private int maxChatMessages = 5;
     
@@ -35,6 +38,9 @@ public class Handler : MonoBehaviour
     
     // ユーザーごとの累積いいね数を記録する辞書
     private Dictionary<string, int> userTotalLikes = new Dictionary<string, int>();
+    
+    // 現在の視聴者数
+    private int currentViewerCount = 0;
 
     private void Awake()
     {
@@ -69,6 +75,9 @@ public class Handler : MonoBehaviour
         {
             chatMessageText.text = "";
         }
+        
+        // 視聴者数テキストを初期化
+        UpdateViewerCountUI();
     }
 
     private void Start()
@@ -77,6 +86,7 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnConnectionError += HandleConnectionError;
         BgcTiktokWebSocket.OnLikeReceived += HandleLikeReceived;
         BgcTiktokWebSocket.OnChatReceived += HandleChatReceived;
+        BgcTiktokWebSocket.OnRoomUserReceived += HandleRoomUserReceived;
         
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
@@ -313,11 +323,46 @@ public class Handler : MonoBehaviour
         Debug.Log("チャットメッセージをクリアしました。");
     }
     
+    // 部屋の視聴者情報を受信したときの処理
+    private void HandleRoomUserReceived(RoomUserMessage roomUserMessage)
+    {
+        // 視聴者数を更新
+        currentViewerCount = roomUserMessage.viewerCount;
+        
+        // 視聴者数のUI更新
+        UpdateViewerCountUI();
+        
+        // ログに表示
+        Debug.Log($"👁 視聴者数: {currentViewerCount}人");
+        
+        // トップ視聴者の情報がある場合は処理
+        if (roomUserMessage.topViewers != null && roomUserMessage.topViewers.Length > 0)
+        {
+            foreach (var viewer in roomUserMessage.topViewers)
+            {
+                if (viewer.user != null)
+                {
+                    Debug.Log($"🏆 トップ視聴者: {viewer.user.nickname}さん (コイン: {viewer.coinCount})");
+                }
+            }
+        }
+    }
+    
+    // 視聴者数のUI更新
+    private void UpdateViewerCountUI()
+    {
+        if (viewerCountText != null)
+        {
+            viewerCountText.text = $"視聴者数: {currentViewerCount}人";
+        }
+    }
+    
     private void OnDestroy()
     {
         // イベントハンドラを解除
         BgcTiktokWebSocket.OnConnectionError -= HandleConnectionError;
         BgcTiktokWebSocket.OnLikeReceived -= HandleLikeReceived;
         BgcTiktokWebSocket.OnChatReceived -= HandleChatReceived;
+        BgcTiktokWebSocket.OnRoomUserReceived -= HandleRoomUserReceived;
     }
 }
