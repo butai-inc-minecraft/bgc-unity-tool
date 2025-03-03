@@ -4,6 +4,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using bgc.unity.tool;
 using bgc.unity.tool.Services;
+using bgc.unity.tool.Models;
+using bgc.unity.tool.Utils;
 
 public class Handler : MonoBehaviour
 {
@@ -21,6 +23,9 @@ public class Handler : MonoBehaviour
     
     // 接続状態を表示するテキスト
     [SerializeField] private Text connectionStatusText;
+    
+    // ユーザーごとの累積いいね数を記録する辞書
+    private Dictionary<string, int> userTotalLikes = new Dictionary<string, int>();
 
     private void Awake()
     {
@@ -55,6 +60,7 @@ public class Handler : MonoBehaviour
     {
         // イベントハンドラを登録
         BgcTiktokWebSocket.OnConnectionError += HandleConnectionError;
+        BgcTiktokWebSocket.OnLikeReceived += HandleLikeReceived;
         
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
@@ -128,6 +134,54 @@ public class Handler : MonoBehaviour
         ShowErrorMessage(errorMessage);
     }
     
+    // いいねメッセージを受信したときの処理
+    private void HandleLikeReceived(LikeMessage likeMessage)
+    {
+        string userId = likeMessage.userId;
+        string nickname = likeMessage.nickname;
+        int likeCount = likeMessage.likeCount;
+        int totalLikeCount = likeMessage.totalLikeCount;
+        
+        // 前回の累積いいね数を算出
+        int previousTotal = totalLikeCount - likeCount;
+        
+        // 今回の累積いいね数
+        int currentTotal = totalLikeCount;
+        
+        // 前回と今回の累積いいね数の間に100の倍数があるかチェック
+        CheckLikeThresholds(userId, nickname, previousTotal, currentTotal, 100);
+    }
+    
+    // いいねの閾値チェックを行うメソッド
+    private void CheckLikeThresholds(string userId, string nickname, int previousTotal, int currentTotal, int threshold)
+    {
+        // 前回の閾値を超えた回数（100で割った商）
+        int previousThresholdCount = previousTotal / threshold;
+        
+        // 今回の閾値を超えた回数（100で割った商）
+        int currentThresholdCount = currentTotal / threshold;
+        
+        // 閾値を超えた回数が増えた場合
+        if (currentThresholdCount > previousThresholdCount)
+        {
+            // 前回と今回の間にある閾値の倍数をすべて処理
+            for (int i = previousThresholdCount + 1; i <= currentThresholdCount; i++)
+            {
+                int achievedCount = i * threshold;
+                
+                // 100いいねごとに異なるメッセージを表示
+                if (achievedCount == 100)
+                {
+                    Debug.Log($"🎉 {nickname}さんが100いいねごとを達成しました！ 🎉");
+                }
+                else
+                {
+                    Debug.Log($"👍 {nickname}さんが{achievedCount}いいねを達成しました！ 👍");
+                }
+            }
+        }
+    }
+    
     // エラーメッセージを表示する
     private void ShowErrorMessage(string message)
     {
@@ -157,9 +211,17 @@ public class Handler : MonoBehaviour
         }
     }
     
+    // すべてのユーザーのいいね数をリセット
+    public void ResetAllUserLikes()
+    {
+        userTotalLikes.Clear();
+        Debug.Log("すべてのユーザーのいいね数をリセットしました。");
+    }
+    
     private void OnDestroy()
     {
         // イベントハンドラを解除
         BgcTiktokWebSocket.OnConnectionError -= HandleConnectionError;
+        BgcTiktokWebSocket.OnLikeReceived -= HandleLikeReceived;
     }
 }

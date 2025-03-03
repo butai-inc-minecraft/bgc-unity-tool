@@ -17,6 +17,9 @@ namespace bgc.unity.tool.Services
         // 部屋の視聴者情報受信時に発火するイベント
         public static event Action<RoomUserMessage> OnRoomUserReceived;
         
+        // いいねメッセージ受信時に発火するイベント
+        public static event Action<LikeMessage> OnLikeReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -176,6 +179,16 @@ namespace bgc.unity.tool.Services
                     {
                         Debug.Log($"部屋の視聴者情報を受信: 視聴者数 {roomUserMsg.viewerCount}人");
                         OnRoomUserReceived?.Invoke(roomUserMsg);
+                    }
+                }
+                else if (message.Contains("\"type\":\"like\"") || message.Contains("\"type\": \"like\""))
+                {
+                    // いいねメッセージの処理
+                    LikeMessage likeMsg = JsonUtility.FromJson<LikeMessage>(message);
+                    if (likeMsg != null)
+                    {
+                        Debug.Log($"いいねメッセージを受信: {likeMsg.nickname}さんが{likeMsg.likeCount}いいねしました (合計: {likeMsg.totalLikeCount})");
+                        OnLikeReceived?.Invoke(likeMsg);
                     }
                 }
                 else if (TiktokSettings.Instance.VerboseLogging)

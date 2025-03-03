@@ -112,4 +112,33 @@ namespace bgc.unity.tool.Models
         public int gifterLevel;
         public int teamMemberLevel;
     }
+
+    // いいねメッセージの型を定義
+    [Serializable]
+    public class LikeMessage
+    {
+        public string type;
+        public int likeCount;
+        public int totalLikeCount;
+        public string userId;
+        public string secUid;
+        public string uniqueId;
+        public string nickname;
+        public string profilePictureUrl;
+        public int followRole;
+        public UserBadge[] userBadges;
+        public int[] userSceneTypes;
+        public UserDetails userDetails;
+        public FollowInfo followInfo;
+        public bool isModerator;
+        public bool isNewGifter;
+        public bool isSubscriber;
+        public int? topGifterRank;
+        public int gifterLevel;
+        public int teamMemberLevel;
+        public string createTime;
+        public string msgId;
+        public string displayType;
+        public string label;
+    }
 } 
