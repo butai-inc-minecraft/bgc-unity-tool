@@ -75,3 +75,4 @@ crashlytics-build.properties
 
 # API Key Settings 
 Packages/bgc.unity.tool/Runtime/apiKey.json
+Packages/bgc.unity.tool/Runtime/apiKey.json.meta
