@@ -130,16 +130,16 @@ public class Handler : MonoBehaviour
             return;
         }
         
-        // username を設定して接続開始
-        TiktokWebSocketService.SetUsername(username);
-        TiktokWebSocketService.Connect();
+        // TiktokWebSocketManagerを使用して接続
+        TiktokWebSocketManager.Instance.SetUsername(username);
+        TiktokWebSocketManager.Instance.Connect();
         Debug.Log("接続を開始しました。");
     }
 
     // 必要に応じて切断処理を呼び出す
     private void DisconnectFromWebSocket()
     {
-        TiktokWebSocketService.Disconnect();
+        TiktokWebSocketManager.Instance.Disconnect();
         Debug.Log("切断しました。");
         UpdateConnectionStatus();
     }

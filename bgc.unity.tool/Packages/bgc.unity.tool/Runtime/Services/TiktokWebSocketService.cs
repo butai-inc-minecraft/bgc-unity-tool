@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using WebSocketSharp;
 using bgc.unity.tool.Models;
@@ -29,6 +30,10 @@ namespace bgc.unity.tool.Services
         private static WebSocket ws;
         private static bool isConnected = false;
         
+        // メインスレッドで処理するためのメッセージキュー
+        private static readonly Queue<string> messageQueue = new Queue<string>();
+        private static bool verboseLogging = false;
+        
         // 外部から設定可能な username（初期値はScriptableObjectから取得）
         private static string username = "default";
         public static string Username 
@@ -50,6 +55,9 @@ namespace bgc.unity.tool.Services
                     Debug.Log("TiktokWebSocketService: 詳細ログが有効です");
                 }
             }
+            
+            // Unity更新時に呼ばれるコールバックを登録
+            Application.quitting += Cleanup;
         }
         
         // 外部から username を設定するための関数
@@ -96,6 +104,9 @@ namespace bgc.unity.tool.Services
 
             try
             {
+                // 設定を事前にキャッシュ
+                verboseLogging = TiktokSettings.Instance.VerboseLogging;
+                
                 ws = new WebSocket(fullUrl);
 
                 ws.OnOpen += (sender, e) => {
@@ -105,12 +116,11 @@ namespace bgc.unity.tool.Services
                 };
 
                 ws.OnMessage += (sender, e) => {
-                    // 詳細ログが有効な場合のみ出力
-                    if (TiktokSettings.Instance.VerboseLogging)
+                    // メッセージをキューに追加するだけ（メインスレッドでの処理は別途行う）
+                    lock (messageQueue)
                     {
-                        Debug.Log("WebSocketメッセージを受信: " + e.Data);
+                        messageQueue.Enqueue(e.Data);
                     }
-                    HandleWebSocketMessage(e.Data);
                 };
 
                 ws.OnError += (sender, e) => {
@@ -148,6 +158,30 @@ namespace bgc.unity.tool.Services
             string message = $"{{\"apiKey\": \"{apiKey}\", \"username\": \"{Username}\"}}";
             ws.Send(message);
             Debug.Log("API キーと Username を送信しました。");
+        }
+        
+        // メインスレッドで呼び出される必要があるメソッド
+        // MonoBehaviourのUpdateなどから呼び出す必要がある
+        public static void ProcessMessageQueue()
+        {
+            if (messageQueue.Count == 0) return;
+            
+            // キューからメッセージを取り出して処理
+            lock (messageQueue)
+            {
+                while (messageQueue.Count > 0)
+                {
+                    string message = messageQueue.Dequeue();
+                    
+                    // 詳細ログが有効な場合のみ出力（事前にキャッシュした値を使用）
+                    if (verboseLogging)
+                    {
+                        Debug.Log("WebSocketメッセージを処理: " + message);
+                    }
+                    
+                    HandleWebSocketMessage(message);
+                }
+            }
         }
         
         // 受信したメッセージを解析して、メッセージタイプに応じたイベントを発火する
@@ -204,7 +238,7 @@ namespace bgc.unity.tool.Services
                         OnChatReceived?.Invoke(chatMsg);
                     }
                 }
-                else if (TiktokSettings.Instance.VerboseLogging)
+                else if (verboseLogging) // キャッシュした値を使用
                 {
                     Debug.Log("他のメッセージを受信: " + message);
                 }

@@ -108,6 +108,15 @@ namespace bgc.unity.tool
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
+        // TiktokWebSocketManagerのインスタンス
+        private TiktokWebSocketManager webSocketManager;
+        
+        void Awake()
+        {
+            // TiktokWebSocketManagerのインスタンスを取得または作成
+            webSocketManager = TiktokWebSocketManager.Instance;
+        }
+        
         void Start()
         {
             // APIキーを読み込む
@@ -120,14 +129,14 @@ namespace bgc.unity.tool
             TiktokWebSocketService.OnChatReceived += HandleChatReceived;
             TiktokWebSocketService.OnConnectionError += HandleConnectionError;
             
-            // WebSocketサービスを初期化して接続
-            TiktokWebSocketService.Connect();
+            // WebSocketManagerを使用して接続
+            webSocketManager.Connect();
         }
 
         // 外部から username を設定するための関数
         public static void SetUsername(string username)
         {
-            TiktokWebSocketService.SetUsername(username);
+            TiktokWebSocketManager.Instance.SetUsername(username);
         }
 
         // ギフトメッセージを受信したときの処理
@@ -169,14 +178,14 @@ namespace bgc.unity.tool
         // WebSocketを切断する
         public void Disconnect()
         {
-            TiktokWebSocketService.Disconnect();
+            webSocketManager.Disconnect();
         }
         
         // 再接続を試みる
         public void Reconnect()
         {
-            TiktokWebSocketService.Disconnect();
-            TiktokWebSocketService.Connect();
+            webSocketManager.Disconnect();
+            webSocketManager.Connect();
         }
 
         void OnDestroy()
