@@ -73,5 +73,5 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
-# API Key Settings Assets/apikey.json
-/Assets/apikey.json
+# API Key Settings 
+Packages/bgc.unity.tool/Runtime/apiKey.json

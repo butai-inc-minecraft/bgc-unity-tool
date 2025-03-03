@@ -1,9 +1,18 @@
 using UnityEngine;
 using WebSocketSharp;
 using System;
+using System.IO;
+using UnityEditor;
 
 namespace bgc.unity.tool
 {
+    // APIキー設定用のクラス
+    [Serializable]
+    public class ApiKeyConfig
+    {
+        public string apiKey;
+    }
+
     // 受信するギフトメッセージの型を定義
     [Serializable]
     public class GiftMessage
@@ -101,10 +110,74 @@ namespace bgc.unity.tool
 
         private WebSocket ws;
         private bool isConnected = false;
+        private string apiKey = "";
 
         void Start()
         {
+            LoadApiKey();
             Connect();
+        }
+
+        // APIキーをJSONファイルから読み込む
+        private void LoadApiKey()
+        {
+            try
+            {
+                // Runtimeディレクトリ内のapiKey.jsonファイルのパスを取得
+                string apiKeyPath = "";
+
+#if UNITY_EDITOR
+                // エディタ実行時はパッケージ内のファイルを直接読み込む
+                string[] guids = AssetDatabase.FindAssets("apiKey", new[] { "Packages/bgc.unity.tool/Runtime" });
+                if (guids.Length > 0)
+                {
+                    apiKeyPath = AssetDatabase.GUIDToAssetPath(guids[0]);
+                    Debug.Log("APIキーファイルのパス: " + apiKeyPath);
+                }
+#else
+                // ビルド時はStreamingAssetsを使用
+                apiKeyPath = Path.Combine(Application.streamingAssetsPath, "apiKey.json");
+#endif
+
+                // ファイルが存在するか確認
+                if (!string.IsNullOrEmpty(apiKeyPath) && File.Exists(apiKeyPath))
+                {
+                    // ファイルを読み込む
+                    string jsonText = "";
+                    
+#if UNITY_EDITOR
+                    // エディタ実行時
+                    jsonText = File.ReadAllText(apiKeyPath);
+#else
+                    // ビルド時
+                    jsonText = File.ReadAllText(apiKeyPath);
+#endif
+
+                    // JSONをデシリアライズ
+                    ApiKeyConfig config = JsonUtility.FromJson<ApiKeyConfig>(jsonText);
+                    
+                    if (config != null && !string.IsNullOrEmpty(config.apiKey))
+                    {
+                        apiKey = config.apiKey;
+                        Debug.Log("APIキーを読み込みました。");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("APIキーの読み込みに失敗しました。設定ファイルの形式が正しくありません。");
+                        apiKey = "xxxxxxxxxxx"; // デフォルト値を使用
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("APIキー設定ファイルが見つかりません: " + apiKeyPath);
+                    apiKey = "xxxxxxxxxxx"; // デフォルト値を使用
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("APIキーの読み込み中にエラーが発生しました: " + e.Message);
+                apiKey = "xxxxxxxxxxx"; // デフォルト値を使用
+            }
         }
 
         public void Connect()
@@ -162,7 +235,6 @@ namespace bgc.unity.tool
         // API キーと Username を一緒に送信する関数
         private void SendApiKeyAndUsername()
         {
-            string apiKey = "xxxxxxxxxxx";
             // 例として、JSON形式で送信（受信側に合わせてフォーマットを変更してください）
             string message = $"{{\"apiKey\": \"{apiKey}\", \"username\": \"{Username}\"}}";
             ws.Send(message);
