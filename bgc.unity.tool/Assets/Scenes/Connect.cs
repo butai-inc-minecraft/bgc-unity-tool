@@ -58,6 +58,9 @@ public class Handler : MonoBehaviour
     // コメントログとギフトログのアイテムリスト
     private List<GameObject> chatLogItems = new List<GameObject>();
     private List<GameObject> giftLogItems = new List<GameObject>();
+    
+    // ギフトのストリーク（連続送信）を追跡するための辞書
+    private Dictionary<string, GameObject> giftStreaks = new Dictionary<string, GameObject>();
 
     private void Awake()
     {
@@ -246,17 +249,31 @@ public class Handler : MonoBehaviour
         string userId = giftMessage.userId;
         string nickname = giftMessage.nickname;
         string giftName = giftMessage.giftName;
+        int giftId = giftMessage.giftId;
         int diamondCount = giftMessage.diamondCount;
         int repeatCount = giftMessage.repeatCount;
+        bool repeatEnd = giftMessage.repeatEnd;
+        int giftType = giftMessage.giftType;
 
         // ギフトアイコン
         string iconUrl = giftMessage.giftPictureUrl;
         
         // ギフト情報をログに表示
-        Debug.Log($"🎁 {nickname}さんから{giftName}（{diamondCount}ダイヤ）を{repeatCount}回受け取りました！");
+        Debug.Log($"🎁 {nickname}さんから{giftName}（ID:{giftId}, {diamondCount}ダイヤ）を{repeatCount}回受け取りました！ repeatEnd: {repeatEnd}, giftType: {giftType}");
         
-        // ギフトログに追加
-        AddGiftLogItem(nickname, giftName, diamondCount, repeatCount, iconUrl);
+        // repeatEndがtrueの場合、ストリークを終了する
+        if (repeatEnd)
+        {
+            string streakId = userId + "_" + giftId;
+            if (giftStreaks.ContainsKey(streakId))
+            {
+                Debug.Log($"ストリーク終了: {streakId} - 辞書から削除します");
+                giftStreaks.Remove(streakId);
+            }
+        }
+        
+        // ギフトログに追加または更新
+        AddGiftLogItem(userId, nickname, giftName, giftId, diamondCount, repeatCount, repeatEnd, iconUrl);
     }
     
     // チャットメッセージをリストに追加
@@ -481,10 +498,15 @@ public class Handler : MonoBehaviour
         yield return null; // 次のフレームまで待機
         Canvas.ForceUpdateCanvases();
         scrollRect.verticalNormalizedPosition = 0f; // 0が一番下、1が一番上
+        
+        // さらに1フレーム待機して再度スクロール位置を更新（より確実にするため）
+        yield return null;
+        Canvas.ForceUpdateCanvases();
+        scrollRect.verticalNormalizedPosition = 0f;
     }
     
-    // ギフトログにアイテムを追加
-    private void AddGiftLogItem(string username, string giftName, int diamonds, int repeatCount, string giftIconUrl)
+    // ギフトログにアイテムを追加または更新
+    private void AddGiftLogItem(string userId, string username, string giftName, int giftId, int diamonds, int repeatCount, bool repeatEnd, string giftIconUrl)
     {
         if (giftLogContainer == null)
         {
@@ -498,13 +520,56 @@ public class Handler : MonoBehaviour
             return;
         }
         
-        // プレハブからギフトアイテムを生成
-        GameObject giftItem = Instantiate(giftItemPrefab, giftLogContainer);
+        // ストリークIDを生成（ユーザーIDとギフトIDの組み合わせ）
+        string streakId = userId + "_" + giftId;
+        
+        // 既存のストリークアイテムを確認
+        GameObject giftItem;
+        bool isNewItem = !giftStreaks.TryGetValue(streakId, out giftItem);
+        
+        // 新しいアイテムの場合のみ作成
+        if (isNewItem)
+        {
+            // 新しいアイテムを作成
+            giftItem = Instantiate(giftItemPrefab, giftLogContainer);
+            
+            // ストリーク辞書に追加（repeatEndがtrueでも一時的に追加）
+            if (!repeatEnd)
+            {
+                giftStreaks[streakId] = giftItem;
+            }
+        }
         
         // アイテムが非アクティブの場合はアクティブにする
-        if (!giftItem.activeSelf)
+        if (giftItem != null && !giftItem.activeSelf)
         {
             giftItem.SetActive(true);
+        }
+        
+        // 新しいアイテムの場合はリストに追加
+        if (isNewItem)
+        {
+            // リストに追加
+            giftLogItems.Add(giftItem);
+            
+            // 最大数を超えた場合、古いアイテムを削除
+            if (giftLogItems.Count > maxLogItems)
+            {
+                GameObject oldestItem = giftLogItems[0];
+                giftLogItems.RemoveAt(0);
+                
+                // 削除するアイテムがストリーク中のアイテムなら辞書からも削除
+                foreach (var kvp in new Dictionary<string, GameObject>(giftStreaks))
+                {
+                    if (kvp.Value == oldestItem)
+                    {
+                        giftStreaks.Remove(kvp.Key);
+                        break;
+                    }
+                }
+                
+                Destroy(oldestItem);
+            }
         }
         
         // GiftItemPrefabコンポーネントがあれば、それを使用
@@ -518,24 +583,30 @@ public class Handler : MonoBehaviour
                     if (sprite != null)
                     {
                         Debug.Log($"GiftItemPrefabコンポーネントにギフトアイコンを設定します");
-                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, sprite);
+                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, sprite, repeatEnd);
                         
                         // レイアウトを更新
                         LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftItem.transform);
+                        
+                        // アイコンロード後にもスクロールを一番下に移動
+                        if (giftScrollRect != null && giftScrollRect.content != null)
+                        {
+                            StartCoroutine(ScrollToBottomNextFrame(giftScrollRect));
+                        }
                     }
                     else
                     {
                         Debug.LogError("ダウンロードされたスプライトがnullです。スプライトなしでSetGiftInfoを呼び出します");
-                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount);
+                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, null, repeatEnd);
                     }
                 }));
             }
             else
             {
-                giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount);
+                giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, null, repeatEnd);
             }
             
-            Debug.Log($"GiftItemPrefabコンポーネントを使用: {username}, {giftName}, {diamonds}, {repeatCount}, アイコンURL: {giftIconUrl}");
+            Debug.Log($"GiftItemPrefabコンポーネントを使用: {username}, {giftName}, {diamonds}, {repeatCount}, アイコンURL: {giftIconUrl}, 新規アイテム: {isNewItem}, ストリーク終了: {repeatEnd}");
             
             // テキストの色を強制的に設定
             Text[] allTexts = giftItem.GetComponentsInChildren<Text>();
@@ -592,6 +663,15 @@ public class Handler : MonoBehaviour
                                 
                                 // レイアウトを更新
                                 LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftIconImage.transform);
+                                
+                                // アイコンロード後にもスクロールを一番下に移動
+                                if (giftScrollRect != null && giftScrollRect.content != null)
+                                {
+                                    StartCoroutine(ScrollToBottomNextFrame(giftScrollRect));
+                                    Debug.Log("スクロールを一番下に移動しました");
+                                }else{
+                                    Debug.LogError("giftScrollRect.contentがnullです。ScrollRectのContentフィールドを設定してください。");
+                                }
                             }
                             else
                             {
@@ -620,6 +700,16 @@ public class Handler : MonoBehaviour
                                     
                                     // レイアウトを更新
                                     LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)firstImage.transform);
+                                    
+                                    // アイコンロード後にもスクロールを一番下に移動
+                                    if (giftScrollRect != null && giftScrollRect.content != null)
+                                    {
+
+                                        StartCoroutine(ScrollToBottomNextFrame(giftScrollRect));
+                                        Debug.Log("スクロールを一番下に移動しました");
+                                    }else{
+                                        Debug.LogError("giftScrollRect.contentがnullです。ScrollRectのContentフィールドを設定してください。");  
+                                    }
                                 }
                                 else
                                 {
@@ -651,18 +741,7 @@ public class Handler : MonoBehaviour
             }
         }
         
-        // リストに追加
-        giftLogItems.Add(giftItem);
-        
-        // 最大数を超えた場合、古いアイテムを削除
-        if (giftLogItems.Count > maxLogItems)
-        {
-            GameObject oldestItem = giftLogItems[0];
-            giftLogItems.RemoveAt(0);
-            Destroy(oldestItem);
-        }
-        
-        // レイアウトを更新
+        // 常にレイアウトを更新し、スクロールを一番下に移動
         LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftLogContainer);
         
         // 自動スクロール - 一番下に移動
@@ -820,6 +899,9 @@ public class Handler : MonoBehaviour
         
         // リストをクリア
         giftLogItems.Clear();
+        
+        // ストリーク辞書をクリア
+        giftStreaks.Clear();
         
         // スクロール位置をリセット
         if (giftScrollRect != null && giftScrollRect.content != null)
