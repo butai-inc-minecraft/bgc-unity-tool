@@ -265,7 +265,18 @@ public class Handler : MonoBehaviour
         
         // ギフト情報をログに表示
         Debug.Log($"🎁 {nickname}さんから{giftName}（ID:{giftId}, {diamondCount}ダイヤ）を{repeatCount}回受け取りました！ repeatEnd: {repeatEnd}, giftType: {giftType}");
-        
+
+        // バラが投げられた時
+        if(giftName == "Rose"){
+            // 🌹🌹 とログに表示
+            Debug.Log("🌹🌹");
+        }
+
+        // 1コインのギフトの時
+        if(diamondCount == 1){
+            // 💰
+            Debug.Log("💰: 1コインギフト");
+        }
         // ストリークIDを生成（ユーザーIDとギフトIDの組み合わせ）
         string streakId = userId + "_" + giftId;
         
