@@ -261,19 +261,48 @@ public class Handler : MonoBehaviour
         // ギフト情報をログに表示
         Debug.Log($"🎁 {nickname}さんから{giftName}（ID:{giftId}, {diamondCount}ダイヤ）を{repeatCount}回受け取りました！ repeatEnd: {repeatEnd}, giftType: {giftType}");
         
-        // repeatEndがtrueの場合、ストリークを終了する
+        // ストリークIDを生成（ユーザーIDとギフトIDの組み合わせ）
+        string streakId = userId + "_" + giftId;
+        
+        // ギフトログに追加または更新
+        GameObject newGiftItem = AddGiftLogItem(userId, nickname, giftName, giftId, diamondCount, repeatCount, repeatEnd, iconUrl);
+        
+        // repeatEndがtrueの場合の処理
         if (repeatEnd)
         {
-            string streakId = userId + "_" + giftId;
+            // 同じuserId_giftIdの組み合わせで赤文字のギフト（repeatEnd:false）のみを探して削除
+            List<GameObject> itemsToRemove = new List<GameObject>();
+            
+            foreach (GameObject item in giftLogItems)
+            {
+                // アイテムが既に削除されている場合または今追加したアイテムの場合はスキップ
+                if (item == null || item == newGiftItem) continue;
+                
+                // GiftItemPrefabコンポーネントを取得
+                GiftItemPrefab giftItemComponent = item.GetComponent<GiftItemPrefab>();
+                if (giftItemComponent != null && !giftItemComponent.IsRepeatEnded && giftItemComponent.GetStreakId() == streakId)
+                {
+                    // 同じstreakIdで赤文字のギフト（repeatEnd:false）を削除リストに追加
+                    itemsToRemove.Add(item);
+                    Debug.Log($"赤文字のギフト（repeatEnd:false）を削除リストに追加: {streakId}");
+                }
+            }
+            
+            // 削除リストのアイテムを削除
+            foreach (GameObject itemToRemove in itemsToRemove)
+            {
+                giftLogItems.Remove(itemToRemove);
+                Destroy(itemToRemove);
+                Debug.Log($"赤文字のギフトを削除しました");
+            }
+            
+            // ストリーク辞書からも削除
             if (giftStreaks.ContainsKey(streakId))
             {
                 Debug.Log($"ストリーク終了: {streakId} - 辞書から削除します");
                 giftStreaks.Remove(streakId);
             }
         }
-        
-        // ギフトログに追加または更新
-        AddGiftLogItem(userId, nickname, giftName, giftId, diamondCount, repeatCount, repeatEnd, iconUrl);
     }
     
     // チャットメッセージをリストに追加
@@ -506,18 +535,18 @@ public class Handler : MonoBehaviour
     }
     
     // ギフトログにアイテムを追加または更新
-    private void AddGiftLogItem(string userId, string username, string giftName, int giftId, int diamonds, int repeatCount, bool repeatEnd, string giftIconUrl)
+    private GameObject AddGiftLogItem(string userId, string username, string giftName, int giftId, int diamonds, int repeatCount, bool repeatEnd, string giftIconUrl)
     {
         if (giftLogContainer == null)
         {
             Debug.LogError("ギフトログの親オブジェクトがアサインされていません。Inspector でアサインしてください。");
-            return;
+            return null;
         }
         
         if (giftItemPrefab == null)
         {
             Debug.LogError("ギフトアイテムのプレハブがアサインされていません。Inspector でアサインしてください。");
-            return;
+            return null;
         }
         
         // ストリークIDを生成（ユーザーIDとギフトIDの組み合わせ）
@@ -576,6 +605,9 @@ public class Handler : MonoBehaviour
         GiftItemPrefab giftItemComponent = giftItem.GetComponent<GiftItemPrefab>();
         if (giftItemComponent != null)
         {
+            // ユーザーIDとギフトIDを設定（新規アイテムでも既存アイテムでも必ず設定）
+            giftItemComponent.SetUserAndGiftId(userId, giftId);
+            
             // ギフトアイコンがある場合は、画像をダウンロードして設定
             if (!string.IsNullOrEmpty(giftIconUrl))
             {
@@ -757,6 +789,8 @@ public class Handler : MonoBehaviour
                 Debug.LogError("giftScrollRect.contentがnullです。ScrollRectのContentフィールドを設定してください。");
             }
         }
+        
+        return giftItem;
     }
     
     // ギフトアイコンをダウンロードするコルーチン
@@ -889,24 +923,27 @@ public class Handler : MonoBehaviour
     // ギフトログをクリア
     public void ClearGiftLog()
     {
-        if (giftLogContainer == null) return;
-        
-        // 全てのアイテムを削除
-        foreach (GameObject item in giftLogItems)
+        if (giftLogContainer != null)
         {
-            Destroy(item);
-        }
-        
-        // リストをクリア
-        giftLogItems.Clear();
-        
-        // ストリーク辞書をクリア
-        giftStreaks.Clear();
-        
-        // スクロール位置をリセット
-        if (giftScrollRect != null && giftScrollRect.content != null)
-        {
-            giftScrollRect.verticalNormalizedPosition = 1f; // 一番上に戻す
+            // 子オブジェクトをすべて削除
+            foreach (Transform child in giftLogContainer)
+            {
+                Destroy(child.gameObject);
+            }
+            
+            // リストをクリア
+            giftLogItems.Clear();
+            
+            // ストリーク辞書もクリア
+            giftStreaks.Clear();
+            
+            // スクロール位置をリセット
+            if (giftScrollRect != null && giftScrollRect.content != null)
+            {
+                giftScrollRect.verticalNormalizedPosition = 1f; // 一番上に戻す
+            }
+            
+            Debug.Log("ギフトログをクリアしました");
         }
     }
 

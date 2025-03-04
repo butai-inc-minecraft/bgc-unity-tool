@@ -18,6 +18,19 @@ namespace bgc.unity.tool
         // リピート終了フラグ
         private bool isRepeatEnded = false;
         
+        // ユーザーIDとギフトIDを保存
+        private string userId = "";
+        private int giftId = 0;
+        
+        // リピート終了フラグを外部から取得するためのプロパティ
+        public bool IsRepeatEnded => isRepeatEnded;
+        
+        // ストリークIDを取得するメソッド
+        public string GetStreakId()
+        {
+            return userId + "_" + giftId;
+        }
+        
         /// <summary>
         /// ギフト情報を設定
         /// </summary>
@@ -31,6 +44,12 @@ namespace bgc.unity.tool
         {
             // リピート終了フラグを設定
             isRepeatEnded = repeatEnded;
+            
+            // ユーザーIDとギフトIDが設定されているか確認
+            if (string.IsNullOrEmpty(userId))
+            {
+                Debug.LogWarning($"ユーザーIDが設定されていません。ユーザー名: {username}, ギフト名: {giftName}");
+            }
             
             if (usernameText != null)
             {
@@ -134,6 +153,13 @@ namespace bgc.unity.tool
                 text.color = originalColor;
                 yield return new WaitForSeconds(0.3f);
             }
+        }
+        
+        // ユーザーIDとギフトIDを設定するメソッド
+        public void SetUserAndGiftId(string userId, int giftId)
+        {
+            this.userId = userId;
+            this.giftId = giftId;
         }
     }
 } 
