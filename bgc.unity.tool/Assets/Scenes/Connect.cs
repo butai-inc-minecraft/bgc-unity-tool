@@ -129,13 +129,14 @@ public class Handler : MonoBehaviour
             connectButton.onClick.AddListener(OnConnectButtonClicked);
         }
 
-        // スクリプト開始時に自動で接続する
-        // ※ InputField に初期値が設定されている必要があります
-        if (usernameInputField != null && !string.IsNullOrEmpty(usernameInputField.text))
+        // デフォルトユーザー名を取得
+        string defaultUsername = bgc.unity.tool.ScriptableObjects.TiktokSettings.Instance.DefaultUsername;
+        
+        // デフォルトユーザー名が設定されている場合は、InputFieldに設定する
+        if (!string.IsNullOrEmpty(defaultUsername) && defaultUsername != "default" && usernameInputField != null)
         {
-            string username = usernameInputField.text;
-            Debug.Log("自動接続: username = " + username);
-            ConnectToWebSocket(username);
+            usernameInputField.text = defaultUsername;
+            Debug.Log("デフォルトユーザー名を設定: " + defaultUsername);
         }
     }
     

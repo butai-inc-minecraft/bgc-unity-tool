@@ -53,8 +53,6 @@ namespace bgc.unity.tool
             TiktokWebSocketService.OnChatReceived += HandleChatReceived;
             TiktokWebSocketService.OnConnectionError += HandleConnectionError;
             
-            // WebSocketManagerを使用して接続
-            webSocketManager.Connect();
         }
 
         // 外部から username を設定するための関数
