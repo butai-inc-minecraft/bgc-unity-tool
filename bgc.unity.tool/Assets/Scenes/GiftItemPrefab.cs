@@ -31,6 +31,12 @@ namespace bgc.unity.tool
             return userId + "_" + giftId;
         }
         
+        // ギフトアイコンのImageコンポーネントを取得するメソッド
+        public Image GetGiftIcon()
+        {
+            return giftIcon;
+        }
+        
         /// <summary>
         /// ギフト情報を設定
         /// </summary>
@@ -117,13 +123,22 @@ namespace bgc.unity.tool
             
             if (giftIcon != null && giftIconSprite != null)
             {
+                Debug.Log($"ギフトアイコンを設定します: {giftIconSprite != null}, サイズ: {giftIconSprite?.rect.width}x{giftIconSprite?.rect.height}");
                 giftIcon.sprite = giftIconSprite;
                 giftIcon.gameObject.SetActive(true);
+                
+                // 画像が表示されるように設定を調整
+                giftIcon.preserveAspect = true;
             }
             else if (giftIcon != null)
             {
                 // アイコンが指定されていない場合はデフォルトアイコンを使用するか非表示にする
+                Debug.LogWarning("ギフトアイコンが指定されていないため、非表示にします");
                 giftIcon.gameObject.SetActive(false);
+            }
+            else
+            {
+                Debug.LogError("giftIconがnullです。Inspectorで設定してください。");
             }
         }
         

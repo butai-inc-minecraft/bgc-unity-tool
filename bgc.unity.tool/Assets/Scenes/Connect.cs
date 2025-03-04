@@ -204,6 +204,7 @@ public class Handler : MonoBehaviour
         int likeCount = likeMessage.likeCount;
         int totalLikeCount = likeMessage.totalLikeCount;
         
+        // todo - ユーザーのいいねごとのXXXを実装したい場合は、辞書にuserIdをキーにしていいね数を記録する
         // いいね情報をログに表示
         Debug.Log($"👍 {nickname}さんから{likeCount}いいねを受け取りました！ 累計: {totalLikeCount}");
         
@@ -640,6 +641,19 @@ public class Handler : MonoBehaviour
                         Debug.Log($"GiftItemPrefabコンポーネントにギフトアイコンを設定します");
                         giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, sprite, repeatEnd);
                         
+                        // 画像が設定されたことを確認
+                        Image giftIcon = giftItemComponent.GetGiftIcon();
+                        if (giftIcon != null)
+                        {
+                            Debug.Log($"ギフトアイコンが正しく設定されました: {giftIcon.sprite != null}, サイズ: {sprite.rect.width}x{sprite.rect.height}");
+                            giftIcon.gameObject.SetActive(true);
+                            giftIcon.preserveAspect = true; // アスペクト比を保持
+                        }
+                        else
+                        {
+                            Debug.LogError("ギフトアイコンのImageコンポーネントが見つかりません");
+                        }
+                        
                         // レイアウトを更新
                         LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftItem.transform);
                         
@@ -651,7 +665,7 @@ public class Handler : MonoBehaviour
                     }
                     else
                     {
-                        Debug.LogError("ダウンロードされたスプライトがnullです。スプライトなしでSetGiftInfoを呼び出します");
+                        Debug.LogError($"ギフトアイコンのダウンロードに失敗しました: {giftIconUrl}");
                         giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, null, repeatEnd);
                     }
                 }));
@@ -704,78 +718,58 @@ public class Handler : MonoBehaviour
                 // ギフトアイコンがある場合は、画像をダウンロードして設定
                 if (!string.IsNullOrEmpty(giftIconUrl))
                 {
-                    Image giftIconImage = giftItem.GetComponentInChildren<Image>();
+                    // ギフトアイコン用のImageコンポーネントを探す
+                    Image giftIconImage = null;
+                    
+                    // 子オブジェクトのImageコンポーネントを検索
+                    Image[] images = giftItem.GetComponentsInChildren<Image>(true);
+                    foreach (Image img in images)
+                    {
+                        // 名前に「Icon」または「Image」が含まれるコンポーネントを優先
+                        if (img.gameObject.name.Contains("Icon") || img.gameObject.name.Contains("Image"))
+                        {
+                            giftIconImage = img;
+                            Debug.Log($"ギフトアイコン用のImageコンポーネントを見つけました: {img.gameObject.name}");
+                            break;
+                        }
+                    }
+                    
+                    // 特定の名前のImageが見つからなかった場合は最初のImageを使用
+                    if (giftIconImage == null && images.Length > 0)
+                    {
+                        giftIconImage = images[0];
+                        Debug.Log($"最初のImageコンポーネントをギフトアイコンとして使用します: {giftIconImage.gameObject.name}");
+                    }
+                    
                     if (giftIconImage != null)
                     {
-                        Debug.Log($"ギフトアイコン用のImageコンポーネントを見つけました: {giftIconImage.gameObject.name}");
-                        
                         StartCoroutine(DownloadGiftIcon(giftIconUrl, (sprite) => {
                             if (sprite != null)
                             {
                                 Debug.Log($"ギフトアイコンをImageに設定します: {giftIconImage.gameObject.name}");
                                 giftIconImage.sprite = sprite;
+                                giftIconImage.preserveAspect = true; // アスペクト比を保持
                                 giftIconImage.gameObject.SetActive(true);
                                 
                                 // レイアウトを更新
-                                LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftIconImage.transform);
+                                LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftItem.transform);
                                 
                                 // アイコンロード後にもスクロールを一番下に移動
                                 if (giftScrollRect != null && giftScrollRect.content != null)
                                 {
                                     StartCoroutine(ScrollToBottomNextFrame(giftScrollRect));
-                                    Debug.Log("スクロールを一番下に移動しました");
-                                }else{
-                                    Debug.LogError("giftScrollRect.contentがnullです。ScrollRectのContentフィールドを設定してください。");
                                 }
                             }
                             else
                             {
-                                Debug.LogError("ダウンロードされたスプライトがnullです");
+                                Debug.LogError($"ギフトアイコンのダウンロードに失敗しました: {giftIconUrl}");
+                                giftIconImage.gameObject.SetActive(false);
                             }
                         }));
                     }
                     else
                     {
-                        // すべてのImageコンポーネントを検索
-                        Image[] allImages = giftItem.GetComponentsInChildren<Image>(true);
-                        Debug.Log($"プレハブ内のImageコンポーネント数: {allImages.Length}");
-                        
-                        if (allImages.Length > 0)
-                        {
-                            // 最初のImageコンポーネントを使用
-                            Image firstImage = allImages[0];
-                            Debug.Log($"最初のImageコンポーネントを使用します: {firstImage.gameObject.name}, アクティブ: {firstImage.gameObject.activeSelf}");
-                            
-                            StartCoroutine(DownloadGiftIcon(giftIconUrl, (sprite) => {
-                                if (sprite != null)
-                                {
-                                    Debug.Log($"ギフトアイコンをImageに設定します: {firstImage.gameObject.name}");
-                                    firstImage.sprite = sprite;
-                                    firstImage.gameObject.SetActive(true);
-                                    
-                                    // レイアウトを更新
-                                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)firstImage.transform);
-                                    
-                                    // アイコンロード後にもスクロールを一番下に移動
-                                    if (giftScrollRect != null && giftScrollRect.content != null)
-                                    {
-
-                                        StartCoroutine(ScrollToBottomNextFrame(giftScrollRect));
-                                        Debug.Log("スクロールを一番下に移動しました");
-                                    }else{
-                                        Debug.LogError("giftScrollRect.contentがnullです。ScrollRectのContentフィールドを設定してください。");  
-                                    }
-                                }
-                                else
-                                {
-                                    Debug.LogError("ダウンロードされたスプライトがnullです");
-                                }
-                            }));
-                        }
-                        else
-                        {
-                            Debug.LogError("ギフトアイコン用のImageコンポーネントが見つかりません");
-                        }
+                        Debug.LogError("ギフトアイコン用のImageコンポーネントが見つかりません");
                     }
                 }
             }
@@ -821,61 +815,26 @@ public class Handler : MonoBehaviour
     {
         if (string.IsNullOrEmpty(url))
         {
-            Debug.LogWarning("ダウンロードURLが空です");
+            Debug.LogError("ギフトアイコンのURLが空です");
             callback(null);
             yield break;
         }
-
-        Debug.Log($"アイコンのダウンロードを開始: {url}");
         
-        // WebP形式かどうかをチェック
-        bool isWebP = url.Contains(".webp") || url.EndsWith("format=webp") || url.Contains("format=webp");
+        Debug.Log($"ギフトアイコンのダウンロードを開始します: {url}");
         
-        // TikTokのURLパターンを検出
-        bool isTikTokUrl = url.Contains("tiktokcdn") || url.Contains("tiktok.com");
-        
-        // WebP形式またはTikTokのURLの場合は、代替フォーマットを試す
-        if (isWebP || isTikTokUrl)
-        {
-            Debug.Log($"WebP形式またはTikTokのURLを検出しました: {url}");
-            
-            // URLにクエリパラメータを追加してJPEG形式を要求
-            string jpegUrl = url;
-            if (url.Contains("?"))
+        // 直接URLから画像をダウンロード
+        yield return StartCoroutine(TryDownloadImage(url, (sprite) => {
+            if (sprite != null)
             {
-                jpegUrl = url + "&format=jpeg";
+                Debug.Log($"ギフトアイコンのダウンロードに成功しました: {url}");
+                callback(sprite);
             }
             else
             {
-                jpegUrl = url + "?format=jpeg";
+                Debug.LogError($"ギフトアイコンのダウンロードに失敗しました: {url}");
+                callback(null);
             }
-            
-            // WebP拡張子を持つ場合は置き換える
-            jpegUrl = jpegUrl.Replace(".webp", ".jpeg");
-            
-            Debug.Log($"JPEG形式を試みます: {jpegUrl}");
-            
-            // まずJPEGを試す
-            yield return StartCoroutine(TryDownloadImage(jpegUrl, (sprite) => {
-                if (sprite != null)
-                {
-                    callback(sprite);
-                }
-                else
-                {
-                    // JPEGが失敗した場合、PNGを試す
-                    string pngUrl = url.Replace(".webp", ".png").Replace("format=webp", "format=png");
-                    Debug.Log($"JPEG形式が失敗しました。PNG形式を試みます: {pngUrl}");
-                    
-                    StartCoroutine(TryDownloadImage(pngUrl, callback));
-                }
-            }));
-        }
-        else
-        {
-            // WebPでない場合は通常通りダウンロード
-            yield return StartCoroutine(TryDownloadImage(url, callback));
-        }
+        }));
     }
     
     // 画像ダウンロードを試みるコルーチン
@@ -884,6 +843,9 @@ public class Handler : MonoBehaviour
         using (UnityEngine.Networking.UnityWebRequest www = UnityEngine.Networking.UnityWebRequestTexture.GetTexture(url))
         {
             www.timeout = 10; // タイムアウトを10秒に設定
+            
+            // ユーザーエージェントを設定（一部のサーバーではこれが必要）
+            www.SetRequestHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36");
             
             yield return www.SendWebRequest();
             
@@ -894,13 +856,29 @@ public class Handler : MonoBehaviour
                     Texture2D texture = ((UnityEngine.Networking.DownloadHandlerTexture)www.downloadHandler).texture;
                     if (texture != null)
                     {
+                        // テクスチャのサイズが0の場合はエラー
+                        if (texture.width <= 0 || texture.height <= 0)
+                        {
+                            Debug.LogError($"ダウンロードされたテクスチャのサイズが無効です: {texture.width}x{texture.height}, URL: {url}");
+                            callback(null);
+                            yield break;
+                        }
+                        
                         Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                         Debug.Log($"アイコンをダウンロードしました: {url}, テクスチャサイズ: {texture.width}x{texture.height}");
                         
                         // スプライトのデバッグ情報
                         Debug.Log($"作成されたスプライト: {sprite != null}, 矩形: {sprite?.rect}, ピボット: {sprite?.pivot}");
                         
-                        callback(sprite);
+                        if (sprite != null)
+                        {
+                            callback(sprite);
+                        }
+                        else
+                        {
+                            Debug.LogError($"スプライトの作成に失敗しました: {url}");
+                            callback(null);
+                        }
                     }
                     else
                     {
@@ -910,13 +888,13 @@ public class Handler : MonoBehaviour
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"テクスチャの処理中にエラーが発生しました: {e.Message}");
+                    Debug.LogError($"テクスチャの処理中にエラーが発生しました: {e.Message}, URL: {url}");
                     callback(null);
                 }
             }
             else
             {
-                Debug.LogError($"アイコンのダウンロードに失敗しました: {www.error}, URL: {url}");
+                Debug.LogError($"アイコンのダウンロードに失敗しました: {www.error}, URL: {url}, レスポンスコード: {www.responseCode}");
                 callback(null);
             }
         }
