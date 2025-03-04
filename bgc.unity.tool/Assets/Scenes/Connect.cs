@@ -216,18 +216,19 @@ public class Handler : MonoBehaviour
         string userId = chatMessage.userId;
         string nickname = chatMessage.nickname;
         string comment = chatMessage.comment;
-        
+        string uniqueId = chatMessage.uniqueId;
+
         // チャットメッセージをログに表示
-        Debug.Log($"💬 {nickname}: {comment}");
+        Debug.Log($"💬 {nickname} (@{userId}): {comment}");
         
         // チャットメッセージをリストに追加
-        AddChatMessage($"{nickname}: {comment}");
+        AddChatMessage($"{nickname} (@{userId}): {comment}");
         
         // チャットメッセージのUI更新
         UpdateChatUI();
         
         // コメントログに追加
-        AddChatLogItem(nickname, comment);
+        AddChatLogItem(userId, nickname, uniqueId, comment);
         
         // 特定のキーワードに反応する例
         if (comment.Contains("おめでとう") || comment.Contains("congratulations"))
@@ -405,7 +406,7 @@ public class Handler : MonoBehaviour
     }
     
     // コメントログにアイテムを追加
-    private void AddChatLogItem(string username, string comment)
+    private void AddChatLogItem(string userId, string nickname, string uniqueId, string comment)
     {
         if (chatLogContainer == null)
         {
@@ -420,7 +421,7 @@ public class Handler : MonoBehaviour
         }
         
         // デバッグ情報
-        Debug.Log($"コメント追加: {username}, {comment}");
+        Debug.Log($"コメント追加: {nickname} (@{userId}), {comment}");
         Debug.Log($"chatLogContainer: {chatLogContainer.name}, 子オブジェクト数: {chatLogContainer.childCount}");
         if (chatScrollRect != null && chatScrollRect.content != null)
         {
@@ -440,8 +441,8 @@ public class Handler : MonoBehaviour
         ChatItemPrefab chatItemComponent = chatItem.GetComponent<ChatItemPrefab>();
         if (chatItemComponent != null)
         {
-            chatItemComponent.SetChatInfo(username, comment);
-            Debug.Log($"ChatItemPrefabコンポーネントを使用: {username}, {comment}");
+            chatItemComponent.SetChatInfo(uniqueId, nickname, comment);
+            Debug.Log($"ChatItemPrefabコンポーネントを使用: {nickname} (@{uniqueId}), {comment}");
             
             // テキストの色を強制的に設定
             Text[] allTexts = chatItem.GetComponentsInChildren<Text>();
@@ -462,9 +463,30 @@ public class Handler : MonoBehaviour
             Text[] texts = chatItem.GetComponentsInChildren<Text>();
             Debug.Log($"テキストコンポーネント数: {texts.Length}");
             
-            if (texts.Length >= 2)
+            if (texts.Length >= 3)
             {
-                texts[0].text = username + ":";
+                // 3つ以上のテキストがある場合は、nickname、uniqueId、commentを別々に表示
+                texts[0].text = nickname;
+                texts[1].text = "@" + userId;
+                texts[2].text = comment;
+                
+                // テキストの色を強制的に設定
+                texts[0].color = Color.black;
+                texts[1].color = Color.black;
+                texts[2].color = Color.black;
+                
+                // フォントサイズを確認
+                if (texts[0].fontSize < 12) texts[0].fontSize = 14;
+                if (texts[1].fontSize < 12) texts[1].fontSize = 14;
+                if (texts[2].fontSize < 12) texts[2].fontSize = 14;
+                
+                Debug.Log($"テキスト1(nickname): {texts[0].text}, 色: {texts[0].color}, フォントサイズ: {texts[0].fontSize}");
+                Debug.Log($"テキスト2(uniqueId): {texts[1].text}, 色: {texts[1].color}, フォントサイズ: {texts[1].fontSize}");
+                Debug.Log($"テキスト3(comment): {texts[2].text}, 色: {texts[2].color}, フォントサイズ: {texts[2].fontSize}");
+            }
+            else if (texts.Length == 2)
+            {
+                texts[0].text = nickname + " (@" + userId + "):";
                 texts[1].text = comment;
                 // テキストの色を強制的に設定
                 texts[0].color = Color.black;
@@ -478,7 +500,7 @@ public class Handler : MonoBehaviour
             }
             else if (texts.Length == 1)
             {
-                texts[0].text = username + ": " + comment;
+                texts[0].text = nickname + " (@" + userId + "): " + comment;
                 // テキストの色を強制的に設定
                 texts[0].color = Color.black;
                 // フォントサイズを確認

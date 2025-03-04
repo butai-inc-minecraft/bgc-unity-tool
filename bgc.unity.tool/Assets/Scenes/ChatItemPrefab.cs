@@ -8,37 +8,32 @@ namespace bgc.unity.tool
     /// </summary>
     public class ChatItemPrefab : MonoBehaviour
     {
-        [SerializeField] private Text usernameText;
+        [SerializeField] private Text nicknameText;
+        [SerializeField] private Text uniqueIdText;
         [SerializeField] private Text commentText;
-        [SerializeField] private Image userIcon;
+    
         
         /// <summary>
         /// コメント情報を設定
         /// </summary>
-        /// <param name="username">ユーザー名</param>
+        /// <param name="uniqueId">ユーザーID</param>
+        /// <param name="nickname">ニックネーム</param>
         /// <param name="comment">コメント内容</param>
-        /// <param name="iconSprite">ユーザーアイコン（オプション）</param>
-        public void SetChatInfo(string username, string comment, Sprite iconSprite = null)
+        public void SetChatInfo(string uniqueId, string nickname, string comment)
         {
-            if (usernameText != null)
+            if (nicknameText != null)
             {
-                usernameText.text = username + ":";
+                nicknameText.text = nickname;
+            }
+            
+            if (uniqueIdText != null)
+            {
+                uniqueIdText.text = "@" + uniqueId;
             }
             
             if (commentText != null)
             {
                 commentText.text = comment;
-            }
-            
-            if (userIcon != null && iconSprite != null)
-            {
-                userIcon.sprite = iconSprite;
-                userIcon.gameObject.SetActive(true);
-            }
-            else if (userIcon != null)
-            {
-                // アイコンが指定されていない場合はデフォルトアイコンを使用するか非表示にする
-                userIcon.gameObject.SetActive(false);
             }
         }
     }

@@ -12,7 +12,9 @@ namespace bgc.unity.tool.Models
         public string groupId;
         public string userId;
         public string secUid;
+        // @xxxxxxxx
         public string uniqueId;
+        // ユーザー名
         public string nickname;
         public string profilePictureUrl;
         public int followRole;
@@ -36,6 +38,7 @@ namespace bgc.unity.tool.Models
         public int giftType;
         public int diamondCount;
         public string giftName;
+        // webp画像のため、別途対応が必要
         public string giftPictureUrl;
         public string timestamp;
         public string receiverUserId;
