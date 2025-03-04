@@ -27,6 +27,9 @@ namespace bgc.unity.tool.Services
         // シェアメッセージ受信時に発火するイベント
         public static event Action<Models.ShareMessage> OnShareReceived;
         
+        // フォローメッセージ受信時に発火するイベント
+        public static event Action<Models.FollowMessage> OnFollowReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -249,6 +252,16 @@ namespace bgc.unity.tool.Services
                     {
                         Debug.Log($"シェアメッセージを受信: {shareMsg.nickname}さんがライブをシェアしました");
                         OnShareReceived?.Invoke(shareMsg);
+                    }
+                }
+                else if (message.Contains("\"type\":\"follow\"") || message.Contains("\"type\": \"follow\""))
+                {
+                    // フォローメッセージの処理
+                    Models.FollowMessage followMsg = JsonUtility.FromJson<Models.FollowMessage>(message);
+                    if (followMsg != null)
+                    {
+                        Debug.Log($"フォローメッセージを受信: {followMsg.nickname}さんがライブ配信者をフォローしました");
+                        OnFollowReceived?.Invoke(followMsg);
                     }
                 }
                 else if (verboseLogging) // キャッシュした値を使用

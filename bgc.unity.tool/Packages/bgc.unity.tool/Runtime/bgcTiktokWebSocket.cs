@@ -32,6 +32,9 @@ namespace bgc.unity.tool
         // シェア受信時に発火するイベント
         public static event Action<Models.ShareMessage> OnShareReceived;
         
+        // フォロー受信時に発火するイベント
+        public static event Action<Models.FollowMessage> OnFollowReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -55,6 +58,7 @@ namespace bgc.unity.tool
             TiktokWebSocketService.OnLikeReceived += HandleLikeReceived;
             TiktokWebSocketService.OnChatReceived += HandleChatReceived;
             TiktokWebSocketService.OnShareReceived += HandleShareReceived;
+            TiktokWebSocketService.OnFollowReceived += HandleFollowReceived;
             TiktokWebSocketService.OnConnectionError += HandleConnectionError;
             
         }
@@ -100,6 +104,13 @@ namespace bgc.unity.tool
             OnShareReceived?.Invoke(shareMessage);
         }
         
+        // フォローメッセージを受信したときの処理
+        private void HandleFollowReceived(Models.FollowMessage followMessage)
+        {
+            // 外部のイベントハンドラに転送
+            OnFollowReceived?.Invoke(followMessage);
+        }
+        
         // 接続エラーが発生したときの処理
         private void HandleConnectionError(string errorMessage)
         {
@@ -131,6 +142,7 @@ namespace bgc.unity.tool
                 TiktokWebSocketService.OnLikeReceived -= HandleLikeReceived;
                 TiktokWebSocketService.OnChatReceived -= HandleChatReceived;
                 TiktokWebSocketService.OnShareReceived -= HandleShareReceived;
+                TiktokWebSocketService.OnFollowReceived -= HandleFollowReceived;
                 TiktokWebSocketService.OnConnectionError -= HandleConnectionError;
                 
                 // WebSocketをクリーンアップ

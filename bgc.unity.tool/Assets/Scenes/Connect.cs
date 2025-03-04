@@ -123,6 +123,7 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnRoomUserReceived += HandleRoomUserReceived;
         BgcTiktokWebSocket.OnGiftReceived += HandleGiftReceived;
         BgcTiktokWebSocket.OnShareReceived += HandleShareReceived;
+        BgcTiktokWebSocket.OnFollowReceived += HandleFollowReceived;
         
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
@@ -958,6 +959,7 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnRoomUserReceived -= HandleRoomUserReceived;
         BgcTiktokWebSocket.OnGiftReceived -= HandleGiftReceived;
         BgcTiktokWebSocket.OnShareReceived -= HandleShareReceived;
+        BgcTiktokWebSocket.OnFollowReceived -= HandleFollowReceived;
     }
 
     // シェアイベントを処理するメソッド
@@ -977,5 +979,24 @@ public class Handler : MonoBehaviour
 
         // 必要に応じて追加の処理をここに実装
         // 例: シェアカウントの更新、特別なエフェクトの表示など
+    }
+
+    // フォローイベントを処理するメソッド
+    private void HandleFollowReceived(FollowMessage followMessage)
+    {
+        if (followMessage == null)
+        {
+            Debug.LogError("フォローメッセージがnullです");
+            return;
+        }
+
+        Debug.Log($"フォローイベントを受信しました: {followMessage.userId}, {followMessage.nickname}");
+
+        // フォローメッセージをチャットログに追加
+        string followText = $"{followMessage.nickname}さんがライブ配信者をフォローしました！";
+        AddChatLogItem(followMessage.userId, followMessage.nickname, followMessage.uniqueId, followText);
+
+        // 必要に応じて追加の処理をここに実装
+        // 例: フォローカウントの更新、特別なエフェクトの表示など
     }
 }
