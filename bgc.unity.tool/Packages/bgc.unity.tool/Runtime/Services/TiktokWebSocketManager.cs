@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 namespace bgc.unity.tool.Services
 {
@@ -81,8 +82,15 @@ namespace bgc.unity.tool.Services
         
         private void OnApplicationQuit()
         {
-            // アプリケーション終了時にクリーンアップ
-            TiktokWebSocketService.Cleanup();
+            try
+            {
+                // アプリケーション終了時にクリーンアップ
+                TiktokWebSocketService.Cleanup();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("アプリケーション終了時のクリーンアップ中にエラーが発生しました: " + ex.Message);
+            }
         }
     }
 } 

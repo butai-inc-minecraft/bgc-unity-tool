@@ -30,6 +30,19 @@ public class Handler : MonoBehaviour
     // 視聴者数を表示するテキスト
     [SerializeField] private Text viewerCountText;
     
+    // いいね数を表示するテキスト
+    [SerializeField] private Text likeCountText;
+    
+    // コメントログとギフトログのUI
+    [Header("コメントログとギフトログ")]
+    [SerializeField] private Transform chatLogContainer; // コメントログの親オブジェクト
+    [SerializeField] private Transform giftLogContainer; // ギフトログの親オブジェクト
+    [SerializeField] private GameObject chatItemPrefab;  // コメントアイテムのプレハブ
+    [SerializeField] private GameObject giftItemPrefab;  // ギフトアイテムのプレハブ
+    [SerializeField] private int maxLogItems = 20;       // 表示する最大ログアイテム数
+    [SerializeField] private ScrollRect chatScrollRect;  // コメントログのScrollRect
+    [SerializeField] private ScrollRect giftScrollRect;  // ギフトログのScrollRect
+    
     // 表示する最大チャットメッセージ数
     [SerializeField] private int maxChatMessages = 5;
     
@@ -41,6 +54,10 @@ public class Handler : MonoBehaviour
     
     // 現在の視聴者数
     private int currentViewerCount = 0;
+    
+    // コメントログとギフトログのアイテムリスト
+    private List<GameObject> chatLogItems = new List<GameObject>();
+    private List<GameObject> giftLogItems = new List<GameObject>();
 
     private void Awake()
     {
@@ -61,6 +78,17 @@ public class Handler : MonoBehaviour
             }
         }
         
+        // ScrollRectのContentフィールドをチェック
+        if (chatScrollRect != null && chatScrollRect.content == null)
+        {
+            Debug.LogError("chatScrollRectのContentフィールドが設定されていません。InspectorでContentフィールドを設定してください。");
+        }
+        
+        if (giftScrollRect != null && giftScrollRect.content == null)
+        {
+            Debug.LogError("giftScrollRectのContentフィールドが設定されていません。InspectorでContentフィールドを設定してください。");
+        }
+        
         // エラーメッセージテキストを初期化
         if (errorMessageText != null)
         {
@@ -78,6 +106,9 @@ public class Handler : MonoBehaviour
         
         // 視聴者数テキストを初期化
         UpdateViewerCountUI();
+        
+        // いいね数テキストを初期化
+        UpdateLikeCountUI(0);
     }
 
     private void Start()
@@ -87,6 +118,7 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnLikeReceived += HandleLikeReceived;
         BgcTiktokWebSocket.OnChatReceived += HandleChatReceived;
         BgcTiktokWebSocket.OnRoomUserReceived += HandleRoomUserReceived;
+        BgcTiktokWebSocket.OnGiftReceived += HandleGiftReceived;
         
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
@@ -166,22 +198,13 @@ public class Handler : MonoBehaviour
         string userId = likeMessage.userId;
         string nickname = likeMessage.nickname;
         int likeCount = likeMessage.likeCount;
+        int totalLikeCount = likeMessage.totalLikeCount;
         
-        // 前回の累積いいね数を取得（存在しない場合は0）
-        int previousTotal = 0;
-        if (userTotalLikes.ContainsKey(userId))
-        {
-            previousTotal = userTotalLikes[userId];
-        }
+        // いいね情報をログに表示
+        Debug.Log($"👍 {nickname}さんから{likeCount}いいねを受け取りました！ 累計: {totalLikeCount}");
         
-        // 今回の累積いいね数を計算
-        int currentTotal = previousTotal + likeCount;
-        
-        // 前回と今回の累積いいね数の間に100の倍数があるかチェック
-        CheckLikeThresholds(userId, nickname, previousTotal, currentTotal, 100);
-        
-        // 累積いいね数を更新
-        userTotalLikes[userId] = currentTotal;
+        // いいね数のUI更新（TikTokから受け取った累計いいね数を表示）
+        UpdateLikeCountUI(totalLikeCount);
     }
     
     // チャットメッセージを受信したときの処理
@@ -200,6 +223,9 @@ public class Handler : MonoBehaviour
         // チャットメッセージのUI更新
         UpdateChatUI();
         
+        // コメントログに追加
+        AddChatLogItem(nickname, comment);
+        
         // 特定のキーワードに反応する例
         if (comment.Contains("おめでとう") || comment.Contains("congratulations"))
         {
@@ -212,6 +238,25 @@ public class Handler : MonoBehaviour
             Debug.Log($"❓ {nickname}さんから質問が届きました！");
             // ここに質問を受信したときの処理を追加
         }
+    }
+    
+    // ギフトメッセージを受信したときの処理
+    private void HandleGiftReceived(GiftMessage giftMessage)
+    {
+        string userId = giftMessage.userId;
+        string nickname = giftMessage.nickname;
+        string giftName = giftMessage.giftName;
+        int diamondCount = giftMessage.diamondCount;
+        int repeatCount = giftMessage.repeatCount;
+
+        // ギフトアイコン
+        string iconUrl = giftMessage.giftPictureUrl;
+        
+        // ギフト情報をログに表示
+        Debug.Log($"🎁 {nickname}さんから{giftName}（{diamondCount}ダイヤ）を{repeatCount}回受け取りました！");
+        
+        // ギフトログに追加
+        AddGiftLogItem(nickname, giftName, diamondCount, repeatCount, iconUrl);
     }
     
     // チャットメッセージをリストに追加
@@ -237,45 +282,13 @@ public class Handler : MonoBehaviour
         }
     }
     
-    // いいねの閾値チェックを行うメソッド
-    private void CheckLikeThresholds(string userId, string nickname, int previousTotal, int currentTotal, int threshold)
+    // いいね数のUI更新
+    private void UpdateLikeCountUI(int totalLikeCount)
     {
-        // 前回の閾値を超えた回数（100で割った商）
-        int previousThresholdCount = previousTotal / threshold;
-        
-        // 今回の閾値を超えた回数（100で割った商）
-        int currentThresholdCount = currentTotal / threshold;
-        
-        // 閾値を超えた回数が増えた場合
-        if (currentThresholdCount > previousThresholdCount)
+        if (likeCountText != null)
         {
-            // 前回と今回の間にある閾値の倍数をすべて処理
-            for (int i = previousThresholdCount + 1; i <= currentThresholdCount; i++)
-            {
-                int achievedCount = i * threshold;
-                
-                // 100いいねごとに異なるメッセージを表示
-                if (achievedCount == 100)
-                {
-                    Debug.Log($"🎉 {nickname}さんが100いいねを達成しました！ 🎉");
-                }
-                else if (achievedCount == 200)
-                {
-                    Debug.Log($"🎊 {nickname}さんが200いいねを達成しました！すごい！ 🎊");
-                }
-                else if (achievedCount == 500)
-                {
-                    Debug.Log($"💯 {nickname}さんが500いいねを達成しました！素晴らしい！ 💯");
-                }
-                else if (achievedCount == 1000)
-                {
-                    Debug.Log($"🏆 {nickname}さんが1000いいねを達成しました！伝説級！ 🏆");
-                }
-                else
-                {
-                    Debug.Log($"👍 {nickname}さんが{achievedCount}いいねを達成しました！ 👍");
-                }
-            }
+            likeCountText.text = $"いいね数: {totalLikeCount}";
+            Debug.Log($"累計いいね数を更新: {totalLikeCount}");
         }
     }
     
@@ -345,6 +358,476 @@ public class Handler : MonoBehaviour
         }
     }
     
+    // コメントログにアイテムを追加
+    private void AddChatLogItem(string username, string comment)
+    {
+        if (chatLogContainer == null)
+        {
+            Debug.LogError("コメントログの親オブジェクトがアサインされていません。Inspector でアサインしてください。");
+            return;
+        }
+        
+        if (chatItemPrefab == null)
+        {
+            Debug.LogError("コメントアイテムのプレハブがアサインされていません。Inspector でアサインしてください。");
+            return;
+        }
+        
+        // デバッグ情報
+        Debug.Log($"コメント追加: {username}, {comment}");
+        Debug.Log($"chatLogContainer: {chatLogContainer.name}, 子オブジェクト数: {chatLogContainer.childCount}");
+        if (chatScrollRect != null && chatScrollRect.content != null)
+        {
+            Debug.Log($"chatScrollRect.content: {chatScrollRect.content.name}, サイズ: {chatScrollRect.content.rect.size}");
+        }
+        
+        // プレハブからコメントアイテムを生成
+        GameObject chatItem = Instantiate(chatItemPrefab, chatLogContainer);
+        
+        // アイテムが非アクティブの場合はアクティブにする
+        if (!chatItem.activeSelf)
+        {
+            chatItem.SetActive(true);
+        }
+        
+        // ChatItemPrefabコンポーネントがあれば、それを使用
+        ChatItemPrefab chatItemComponent = chatItem.GetComponent<ChatItemPrefab>();
+        if (chatItemComponent != null)
+        {
+            chatItemComponent.SetChatInfo(username, comment);
+            Debug.Log($"ChatItemPrefabコンポーネントを使用: {username}, {comment}");
+            
+            // テキストの色を強制的に設定
+            Text[] allTexts = chatItem.GetComponentsInChildren<Text>();
+            foreach (Text text in allTexts)
+            {
+                // 黒色に設定
+                text.color = Color.black;
+                // フォントサイズを確認
+                if (text.fontSize < 12)
+                {
+                    text.fontSize = 14;
+                }
+            }
+        }
+        else
+        {
+            // 従来の方法（コンポーネントがない場合）
+            Text[] texts = chatItem.GetComponentsInChildren<Text>();
+            Debug.Log($"テキストコンポーネント数: {texts.Length}");
+            
+            if (texts.Length >= 2)
+            {
+                texts[0].text = username + ":";
+                texts[1].text = comment;
+                // テキストの色を強制的に設定
+                texts[0].color = Color.black;
+                texts[1].color = Color.black;
+                // フォントサイズを確認
+                if (texts[0].fontSize < 12) texts[0].fontSize = 14;
+                if (texts[1].fontSize < 12) texts[1].fontSize = 14;
+                
+                Debug.Log($"テキスト1: {texts[0].text}, 色: {texts[0].color}, フォントサイズ: {texts[0].fontSize}, アクティブ: {texts[0].gameObject.activeSelf}");
+                Debug.Log($"テキスト2: {texts[1].text}, 色: {texts[1].color}, フォントサイズ: {texts[1].fontSize}, アクティブ: {texts[1].gameObject.activeSelf}");
+            }
+            else if (texts.Length == 1)
+            {
+                texts[0].text = username + ": " + comment;
+                // テキストの色を強制的に設定
+                texts[0].color = Color.black;
+                // フォントサイズを確認
+                if (texts[0].fontSize < 12) texts[0].fontSize = 14;
+                
+                Debug.Log($"テキスト: {texts[0].text}, 色: {texts[0].color}, フォントサイズ: {texts[0].fontSize}, アクティブ: {texts[0].gameObject.activeSelf}");
+            }
+            else
+            {
+                Debug.LogError("テキストコンポーネントが見つかりません。");
+            }
+        }
+        
+        // リストに追加
+        chatLogItems.Add(chatItem);
+        
+        // 最大数を超えた場合、古いアイテムを削除
+        if (chatLogItems.Count > maxLogItems)
+        {
+            GameObject oldestItem = chatLogItems[0];
+            chatLogItems.RemoveAt(0);
+            Destroy(oldestItem);
+        }
+        
+        // レイアウトを更新
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)chatLogContainer);
+        
+        // 自動スクロール - 一番下に移動
+        if (chatScrollRect != null)
+        {
+            if (chatScrollRect.content != null)
+            {
+                // 次のフレームでスクロール位置を更新
+                StartCoroutine(ScrollToBottomNextFrame(chatScrollRect));
+            }
+            else
+            {
+                Debug.LogError("chatScrollRect.contentがnullです。ScrollRectのContentフィールドを設定してください。");
+            }
+        }
+    }
+    
+    // 次のフレームでスクロール位置を更新するコルーチン
+    private IEnumerator ScrollToBottomNextFrame(ScrollRect scrollRect)
+    {
+        yield return null; // 次のフレームまで待機
+        Canvas.ForceUpdateCanvases();
+        scrollRect.verticalNormalizedPosition = 0f; // 0が一番下、1が一番上
+    }
+    
+    // ギフトログにアイテムを追加
+    private void AddGiftLogItem(string username, string giftName, int diamonds, int repeatCount, string giftIconUrl)
+    {
+        if (giftLogContainer == null)
+        {
+            Debug.LogError("ギフトログの親オブジェクトがアサインされていません。Inspector でアサインしてください。");
+            return;
+        }
+        
+        if (giftItemPrefab == null)
+        {
+            Debug.LogError("ギフトアイテムのプレハブがアサインされていません。Inspector でアサインしてください。");
+            return;
+        }
+        
+        // プレハブからギフトアイテムを生成
+        GameObject giftItem = Instantiate(giftItemPrefab, giftLogContainer);
+        
+        // アイテムが非アクティブの場合はアクティブにする
+        if (!giftItem.activeSelf)
+        {
+            giftItem.SetActive(true);
+        }
+        
+        // GiftItemPrefabコンポーネントがあれば、それを使用
+        GiftItemPrefab giftItemComponent = giftItem.GetComponent<GiftItemPrefab>();
+        if (giftItemComponent != null)
+        {
+            // ギフトアイコンがある場合は、画像をダウンロードして設定
+            if (!string.IsNullOrEmpty(giftIconUrl))
+            {
+                StartCoroutine(DownloadGiftIcon(giftIconUrl, (sprite) => {
+                    if (sprite != null)
+                    {
+                        Debug.Log($"GiftItemPrefabコンポーネントにギフトアイコンを設定します");
+                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, sprite);
+                        
+                        // レイアウトを更新
+                        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftItem.transform);
+                    }
+                    else
+                    {
+                        Debug.LogError("ダウンロードされたスプライトがnullです。スプライトなしでSetGiftInfoを呼び出します");
+                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount);
+                    }
+                }));
+            }
+            else
+            {
+                giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount);
+            }
+            
+            Debug.Log($"GiftItemPrefabコンポーネントを使用: {username}, {giftName}, {diamonds}, {repeatCount}, アイコンURL: {giftIconUrl}");
+            
+            // テキストの色を強制的に設定
+            Text[] allTexts = giftItem.GetComponentsInChildren<Text>();
+            foreach (Text text in allTexts)
+            {
+                // 黒色に設定
+                text.color = Color.black;
+                // フォントサイズを確認
+                if (text.fontSize < 12)
+                {
+                    text.fontSize = 14;
+                }
+            }
+        }
+        else
+        {
+            // 従来の方法（コンポーネントがない場合）
+            Text[] texts = giftItem.GetComponentsInChildren<Text>();
+            Debug.Log($"ギフトテキストコンポーネント数: {texts.Length}");
+            
+            if (texts.Length >= 3)
+            {
+                texts[0].text = username + ":";
+                texts[1].text = "Sent " + giftName;
+                texts[2].text = "Repeat: x" + repeatCount + "\nCost: " + diamonds + " Diamonds";
+                
+                // テキストの色を強制的に設定
+                texts[0].color = Color.black;
+                texts[1].color = Color.black;
+                texts[2].color = Color.black;
+                // フォントサイズを確認
+                if (texts[0].fontSize < 12) texts[0].fontSize = 14;
+                if (texts[1].fontSize < 12) texts[1].fontSize = 14;
+                if (texts[2].fontSize < 12) texts[2].fontSize = 14;
+                
+                Debug.Log($"ギフトテキスト1: {texts[0].text}, 色: {texts[0].color}, フォントサイズ: {texts[0].fontSize}, アクティブ: {texts[0].gameObject.activeSelf}");
+                Debug.Log($"ギフトテキスト2: {texts[1].text}, 色: {texts[1].color}, フォントサイズ: {texts[1].fontSize}, アクティブ: {texts[1].gameObject.activeSelf}");
+                Debug.Log($"ギフトテキスト3: {texts[2].text}, 色: {texts[2].color}, フォントサイズ: {texts[2].fontSize}, アクティブ: {texts[2].gameObject.activeSelf}");
+                
+                // ギフトアイコンがある場合は、画像をダウンロードして設定
+                if (!string.IsNullOrEmpty(giftIconUrl))
+                {
+                    Image giftIconImage = giftItem.GetComponentInChildren<Image>();
+                    if (giftIconImage != null)
+                    {
+                        Debug.Log($"ギフトアイコン用のImageコンポーネントを見つけました: {giftIconImage.gameObject.name}");
+                        
+                        StartCoroutine(DownloadGiftIcon(giftIconUrl, (sprite) => {
+                            if (sprite != null)
+                            {
+                                Debug.Log($"ギフトアイコンをImageに設定します: {giftIconImage.gameObject.name}");
+                                giftIconImage.sprite = sprite;
+                                giftIconImage.gameObject.SetActive(true);
+                                
+                                // レイアウトを更新
+                                LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftIconImage.transform);
+                            }
+                            else
+                            {
+                                Debug.LogError("ダウンロードされたスプライトがnullです");
+                            }
+                        }));
+                    }
+                    else
+                    {
+                        // すべてのImageコンポーネントを検索
+                        Image[] allImages = giftItem.GetComponentsInChildren<Image>(true);
+                        Debug.Log($"プレハブ内のImageコンポーネント数: {allImages.Length}");
+                        
+                        if (allImages.Length > 0)
+                        {
+                            // 最初のImageコンポーネントを使用
+                            Image firstImage = allImages[0];
+                            Debug.Log($"最初のImageコンポーネントを使用します: {firstImage.gameObject.name}, アクティブ: {firstImage.gameObject.activeSelf}");
+                            
+                            StartCoroutine(DownloadGiftIcon(giftIconUrl, (sprite) => {
+                                if (sprite != null)
+                                {
+                                    Debug.Log($"ギフトアイコンをImageに設定します: {firstImage.gameObject.name}");
+                                    firstImage.sprite = sprite;
+                                    firstImage.gameObject.SetActive(true);
+                                    
+                                    // レイアウトを更新
+                                    LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)firstImage.transform);
+                                }
+                                else
+                                {
+                                    Debug.LogError("ダウンロードされたスプライトがnullです");
+                                }
+                            }));
+                        }
+                        else
+                        {
+                            Debug.LogError("ギフトアイコン用のImageコンポーネントが見つかりません");
+                        }
+                    }
+                }
+            }
+            else if (texts.Length == 1)
+            {
+                texts[0].text = username + ": Sent " + giftName + " (x" + repeatCount + ", " + diamonds + " Diamonds)";
+                
+                // テキストの色を強制的に設定
+                texts[0].color = Color.black;
+                // フォントサイズを確認
+                if (texts[0].fontSize < 12) texts[0].fontSize = 14;
+                
+                Debug.Log($"ギフトテキスト: {texts[0].text}, 色: {texts[0].color}, フォントサイズ: {texts[0].fontSize}, アクティブ: {texts[0].gameObject.activeSelf}");
+            }
+            else
+            {
+                Debug.LogError("ギフトテキストコンポーネントが見つかりません。");
+            }
+        }
+        
+        // リストに追加
+        giftLogItems.Add(giftItem);
+        
+        // 最大数を超えた場合、古いアイテムを削除
+        if (giftLogItems.Count > maxLogItems)
+        {
+            GameObject oldestItem = giftLogItems[0];
+            giftLogItems.RemoveAt(0);
+            Destroy(oldestItem);
+        }
+        
+        // レイアウトを更新
+        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)giftLogContainer);
+        
+        // 自動スクロール - 一番下に移動
+        if (giftScrollRect != null)
+        {
+            if (giftScrollRect.content != null)
+            {
+                // 次のフレームでスクロール位置を更新
+                StartCoroutine(ScrollToBottomNextFrame(giftScrollRect));
+            }
+            else
+            {
+                Debug.LogError("giftScrollRect.contentがnullです。ScrollRectのContentフィールドを設定してください。");
+            }
+        }
+    }
+    
+    // ギフトアイコンをダウンロードするコルーチン
+    private IEnumerator DownloadGiftIcon(string url, System.Action<Sprite> callback)
+    {
+        if (string.IsNullOrEmpty(url))
+        {
+            Debug.LogWarning("ダウンロードURLが空です");
+            callback(null);
+            yield break;
+        }
+
+        Debug.Log($"アイコンのダウンロードを開始: {url}");
+        
+        // WebP形式かどうかをチェック
+        bool isWebP = url.Contains(".webp") || url.EndsWith("format=webp") || url.Contains("format=webp");
+        
+        // TikTokのURLパターンを検出
+        bool isTikTokUrl = url.Contains("tiktokcdn") || url.Contains("tiktok.com");
+        
+        // WebP形式またはTikTokのURLの場合は、代替フォーマットを試す
+        if (isWebP || isTikTokUrl)
+        {
+            Debug.Log($"WebP形式またはTikTokのURLを検出しました: {url}");
+            
+            // URLにクエリパラメータを追加してJPEG形式を要求
+            string jpegUrl = url;
+            if (url.Contains("?"))
+            {
+                jpegUrl = url + "&format=jpeg";
+            }
+            else
+            {
+                jpegUrl = url + "?format=jpeg";
+            }
+            
+            // WebP拡張子を持つ場合は置き換える
+            jpegUrl = jpegUrl.Replace(".webp", ".jpeg");
+            
+            Debug.Log($"JPEG形式を試みます: {jpegUrl}");
+            
+            // まずJPEGを試す
+            yield return StartCoroutine(TryDownloadImage(jpegUrl, (sprite) => {
+                if (sprite != null)
+                {
+                    callback(sprite);
+                }
+                else
+                {
+                    // JPEGが失敗した場合、PNGを試す
+                    string pngUrl = url.Replace(".webp", ".png").Replace("format=webp", "format=png");
+                    Debug.Log($"JPEG形式が失敗しました。PNG形式を試みます: {pngUrl}");
+                    
+                    StartCoroutine(TryDownloadImage(pngUrl, callback));
+                }
+            }));
+        }
+        else
+        {
+            // WebPでない場合は通常通りダウンロード
+            yield return StartCoroutine(TryDownloadImage(url, callback));
+        }
+    }
+    
+    // 画像ダウンロードを試みるコルーチン
+    private IEnumerator TryDownloadImage(string url, System.Action<Sprite> callback)
+    {
+        using (UnityEngine.Networking.UnityWebRequest www = UnityEngine.Networking.UnityWebRequestTexture.GetTexture(url))
+        {
+            www.timeout = 10; // タイムアウトを10秒に設定
+            
+            yield return www.SendWebRequest();
+            
+            if (www.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    Texture2D texture = ((UnityEngine.Networking.DownloadHandlerTexture)www.downloadHandler).texture;
+                    if (texture != null)
+                    {
+                        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                        Debug.Log($"アイコンをダウンロードしました: {url}, テクスチャサイズ: {texture.width}x{texture.height}");
+                        
+                        // スプライトのデバッグ情報
+                        Debug.Log($"作成されたスプライト: {sprite != null}, 矩形: {sprite?.rect}, ピボット: {sprite?.pivot}");
+                        
+                        callback(sprite);
+                    }
+                    else
+                    {
+                        Debug.LogError($"テクスチャの取得に失敗しました: {url}");
+                        callback(null);
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"テクスチャの処理中にエラーが発生しました: {e.Message}");
+                    callback(null);
+                }
+            }
+            else
+            {
+                Debug.LogError($"アイコンのダウンロードに失敗しました: {www.error}, URL: {url}");
+                callback(null);
+            }
+        }
+    }
+    
+    // コメントログをクリア
+    public void ClearChatLog()
+    {
+        if (chatLogContainer == null) return;
+        
+        // 全てのアイテムを削除
+        foreach (GameObject item in chatLogItems)
+        {
+            Destroy(item);
+        }
+        
+        // リストをクリア
+        chatLogItems.Clear();
+        
+        // スクロール位置をリセット
+        if (chatScrollRect != null && chatScrollRect.content != null)
+        {
+            chatScrollRect.verticalNormalizedPosition = 1f; // 一番上に戻す
+        }
+    }
+    
+    // ギフトログをクリア
+    public void ClearGiftLog()
+    {
+        if (giftLogContainer == null) return;
+        
+        // 全てのアイテムを削除
+        foreach (GameObject item in giftLogItems)
+        {
+            Destroy(item);
+        }
+        
+        // リストをクリア
+        giftLogItems.Clear();
+        
+        // スクロール位置をリセット
+        if (giftScrollRect != null && giftScrollRect.content != null)
+        {
+            giftScrollRect.verticalNormalizedPosition = 1f; // 一番上に戻す
+        }
+    }
+
     private void OnDestroy()
     {
         // イベントハンドラを解除
@@ -352,5 +835,6 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnLikeReceived -= HandleLikeReceived;
         BgcTiktokWebSocket.OnChatReceived -= HandleChatReceived;
         BgcTiktokWebSocket.OnRoomUserReceived -= HandleRoomUserReceived;
+        BgcTiktokWebSocket.OnGiftReceived -= HandleGiftReceived;
     }
 }

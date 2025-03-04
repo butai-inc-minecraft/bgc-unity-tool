@@ -1,5 +1,7 @@
 using UnityEngine;
 using bgc.unity.tool;
+using bgc.unity.tool.Models;
+
 public class GiftHandler : MonoBehaviour
 {
        void OnEnable()

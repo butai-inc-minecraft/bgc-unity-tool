@@ -13,16 +13,16 @@ namespace bgc.unity.tool.Services
         private static readonly string baseUrl = "wss://tiktok-live-server-2.onrender.com/ws/";
         
         // ギフトメッセージ受信時に発火するイベント
-        public static event Action<GiftMessage> OnGiftReceived;
+        public static event Action<Models.GiftMessage> OnGiftReceived;
         
         // 部屋の視聴者情報受信時に発火するイベント
-        public static event Action<RoomUserMessage> OnRoomUserReceived;
+        public static event Action<Models.RoomUserMessage> OnRoomUserReceived;
         
         // いいねメッセージ受信時に発火するイベント
-        public static event Action<LikeMessage> OnLikeReceived;
+        public static event Action<Models.LikeMessage> OnLikeReceived;
         
         // チャットメッセージ受信時に発火するイベント
-        public static event Action<ChatMessage> OnChatReceived;
+        public static event Action<Models.ChatMessage> OnChatReceived;
         
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
@@ -201,7 +201,7 @@ namespace bgc.unity.tool.Services
                 if (message.Contains("\"type\":\"gift\"") || message.Contains("\"type\": \"gift\""))
                 {
                     // ギフトメッセージの処理
-                    GiftMessage giftMsg = JsonUtility.FromJson<GiftMessage>(message);
+                    Models.GiftMessage giftMsg = JsonUtility.FromJson<Models.GiftMessage>(message);
                     if (giftMsg != null)
                     {
                         // Debug.Log("ギフトメッセージを受信: " + giftMsg.giftName);
@@ -211,7 +211,7 @@ namespace bgc.unity.tool.Services
                 else if (message.Contains("\"type\":\"roomUser\"") || message.Contains("\"type\": \"roomUser\""))
                 {
                     // 部屋の視聴者情報メッセージの処理
-                    RoomUserMessage roomUserMsg = JsonUtility.FromJson<RoomUserMessage>(message);
+                    Models.RoomUserMessage roomUserMsg = JsonUtility.FromJson<Models.RoomUserMessage>(message);
                     if (roomUserMsg != null)
                     {
                         // Debug.Log($"部屋の視聴者情報を受信: 視聴者数 {roomUserMsg.viewerCount}人");
@@ -221,7 +221,7 @@ namespace bgc.unity.tool.Services
                 else if (message.Contains("\"type\":\"like\"") || message.Contains("\"type\": \"like\""))
                 {
                     // いいねメッセージの処理
-                    LikeMessage likeMsg = JsonUtility.FromJson<LikeMessage>(message);
+                    Models.LikeMessage likeMsg = JsonUtility.FromJson<Models.LikeMessage>(message);
                     if (likeMsg != null)
                     {
                         // Debug.Log($"いいねメッセージを受信: {likeMsg.nickname}さんが{likeMsg.likeCount}いいねしました (合計: {likeMsg.totalLikeCount})");
@@ -231,7 +231,7 @@ namespace bgc.unity.tool.Services
                 else if (message.Contains("\"type\":\"chat\"") || message.Contains("\"type\": \"chat\""))
                 {
                     // チャットメッセージの処理
-                    ChatMessage chatMsg = JsonUtility.FromJson<ChatMessage>(message);
+                    Models.ChatMessage chatMsg = JsonUtility.FromJson<Models.ChatMessage>(message);
                     if (chatMsg != null)
                     {
                         // Debug.Log($"チャットメッセージを受信: {chatMsg.nickname}さん「{chatMsg.comment}」");
@@ -265,14 +265,21 @@ namespace bgc.unity.tool.Services
         
         public static void Cleanup()
         {
-            if (ws != null)
+            try
             {
-                if (isConnected)
+                if (ws != null)
                 {
-                    ws.Close();
-                    isConnected = false;
+                    if (isConnected)
+                    {
+                        ws.Close();
+                        isConnected = false;
+                    }
+                    ws = null;
                 }
-                ws = null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("WebSocketのクリーンアップ中にエラーが発生しました: " + ex.Message);
             }
         }
     }
