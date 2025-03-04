@@ -24,6 +24,9 @@ namespace bgc.unity.tool.Services
         // チャットメッセージ受信時に発火するイベント
         public static event Action<Models.ChatMessage> OnChatReceived;
         
+        // シェアメッセージ受信時に発火するイベント
+        public static event Action<Models.ShareMessage> OnShareReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -236,6 +239,16 @@ namespace bgc.unity.tool.Services
                     {
                         // Debug.Log($"チャットメッセージを受信: {chatMsg.nickname}さん「{chatMsg.comment}」");
                         OnChatReceived?.Invoke(chatMsg);
+                    }
+                }
+                else if (message.Contains("\"type\":\"share\"") || message.Contains("\"type\": \"share\""))
+                {
+                    // シェアメッセージの処理
+                    Models.ShareMessage shareMsg = JsonUtility.FromJson<Models.ShareMessage>(message);
+                    if (shareMsg != null)
+                    {
+                        Debug.Log($"シェアメッセージを受信: {shareMsg.nickname}さんがライブをシェアしました");
+                        OnShareReceived?.Invoke(shareMsg);
                     }
                 }
                 else if (verboseLogging) // キャッシュした値を使用

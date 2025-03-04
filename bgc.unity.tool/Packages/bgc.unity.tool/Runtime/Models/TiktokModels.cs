@@ -171,4 +171,31 @@ namespace bgc.unity.tool.Models
         public string msgId;
         public string createTime;
     }
+
+    // シェアメッセージの型を定義
+    [Serializable]
+    public class ShareMessage
+    {
+        public string type;
+        public string userId;
+        public string secUid;
+        public string uniqueId;
+        public string nickname;
+        public string profilePictureUrl;
+        public int followRole;
+        public UserBadge[] userBadges;
+        public int[] userSceneTypes;
+        public UserDetails userDetails;
+        public FollowInfo followInfo;
+        public bool isModerator;
+        public bool isNewGifter;
+        public bool isSubscriber;
+        public object topGifterRank;
+        public int gifterLevel;
+        public int teamMemberLevel;
+        public string msgId;
+        public string createTime;
+        public string label;
+        public string displayType;
+    }
 } 

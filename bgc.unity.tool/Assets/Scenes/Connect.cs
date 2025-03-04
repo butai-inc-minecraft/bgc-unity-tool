@@ -122,6 +122,7 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnChatReceived += HandleChatReceived;
         BgcTiktokWebSocket.OnRoomUserReceived += HandleRoomUserReceived;
         BgcTiktokWebSocket.OnGiftReceived += HandleGiftReceived;
+        BgcTiktokWebSocket.OnShareReceived += HandleShareReceived;
         
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
@@ -956,5 +957,25 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnChatReceived -= HandleChatReceived;
         BgcTiktokWebSocket.OnRoomUserReceived -= HandleRoomUserReceived;
         BgcTiktokWebSocket.OnGiftReceived -= HandleGiftReceived;
+        BgcTiktokWebSocket.OnShareReceived -= HandleShareReceived;
+    }
+
+    // シェアイベントを処理するメソッド
+    private void HandleShareReceived(ShareMessage shareMessage)
+    {
+        if (shareMessage == null)
+        {
+            Debug.LogError("シェアメッセージがnullです");
+            return;
+        }
+
+        Debug.Log($"シェアイベントを受信しました: {shareMessage.userId}, {shareMessage.nickname}");
+
+        // シェアメッセージをチャットログに追加
+        string shareText = $"{shareMessage.nickname}さんがライブをシェアしました！";
+        AddChatLogItem(shareMessage.userId, shareMessage.nickname, shareMessage.uniqueId, shareText);
+
+        // 必要に応じて追加の処理をここに実装
+        // 例: シェアカウントの更新、特別なエフェクトの表示など
     }
 }
