@@ -160,9 +160,6 @@ namespace bgc.unity.tool.Editor
             Selection.activeObject = settings;
             Debug.Log("新しい設定ファイルを作成しました: " + assetPath);
             
-            // サンプル設定ファイルも作成
-            CreateSampleSettings();
-            
             // .gitignoreに追加するか確認
             if (EditorUtility.DisplayDialog("Gitignoreに追加", 
                 "TiktokSettings.assetを.gitignoreに追加しますか？\n\n" +
@@ -171,72 +168,6 @@ namespace bgc.unity.tool.Editor
             {
                 AddToGitignore();
             }
-        }
-        
-        [MenuItem("BGC/TikTok/サンプル設定ファイルを作成")]
-        public static void CreateSampleSettings()
-        {
-            // Resourcesディレクトリが存在するか確認
-            string resourcesPath = Path.Combine(Application.dataPath, "Resources");
-            if (!Directory.Exists(resourcesPath))
-            {
-                Directory.CreateDirectory(resourcesPath);
-                AssetDatabase.Refresh();
-            }
-            
-            // サンプル設定ファイルのパス
-            string samplePath = "Assets/Resources/TiktokSettings.sample.asset";
-            
-            // 既存のサンプル設定ファイルを確認
-            TiktokSettings existingSample = AssetDatabase.LoadAssetAtPath<TiktokSettings>(samplePath);
-            if (existingSample != null)
-            {
-                EditorUtility.FocusProjectWindow();
-                Selection.activeObject = existingSample;
-                Debug.Log("既存のサンプル設定ファイルを開きました: " + samplePath);
-                return;
-            }
-            
-            // 新しいサンプル設定ファイルを作成
-            TiktokSettings sampleSettings = CreateInstance<TiktokSettings>();
-            // サンプル値を設定（APIキーは空のまま）
-            // SerializedObjectを使って値を設定
-            SerializedObject serializedObject = new SerializedObject(sampleSettings);
-            SerializedProperty defaultUsernameProp = serializedObject.FindProperty("defaultUsername");
-            SerializedProperty verboseLoggingProp = serializedObject.FindProperty("verboseLogging");
-            
-            defaultUsernameProp.stringValue = "sample_username";
-            verboseLoggingProp.boolValue = true;
-            
-            serializedObject.ApplyModifiedProperties();
-            
-            AssetDatabase.CreateAsset(sampleSettings, samplePath);
-            AssetDatabase.SaveAssets();
-            
-            EditorUtility.FocusProjectWindow();
-            Selection.activeObject = sampleSettings;
-            Debug.Log("サンプル設定ファイルを作成しました: " + samplePath);
-            
-            // README.txtファイルも作成して使い方を説明
-            string readmePath = Path.Combine(resourcesPath, "TiktokSettings_README.txt");
-            string readmeContent = 
-                "TikTok設定ファイルの使い方\n" +
-                "====================\n\n" +
-                "1. TiktokSettings.asset - 実際の設定ファイル（.gitignoreに追加してください）\n" +
-                "   - APIキーなどの機密情報を含むため、Gitにコミットしないでください\n\n" +
-                "2. TiktokSettings.sample.asset - サンプル設定ファイル\n" +
-                "   - 設定ファイルの構造を示すためのサンプルです\n" +
-                "   - APIキーは含まれていません\n" +
-                "   - このファイルはGitにコミットして構いません\n\n" +
-                "新しい環境でセットアップする場合：\n" +
-                "1. TiktokSettings.sample.assetをコピーしてTiktokSettings.assetを作成\n" +
-                "2. TiktokSettings.assetにAPIキーを設定\n" +
-                "3. アプリケーションを実行\n";
-            
-            File.WriteAllText(readmePath, readmeContent);
-            AssetDatabase.Refresh();
-            
-            Debug.Log("README.txtファイルを作成しました: " + readmePath);
         }
         
         private static void AddToGitignore()
