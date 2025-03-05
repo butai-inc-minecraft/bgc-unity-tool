@@ -128,7 +128,23 @@ namespace bgc.unity.tool
         // 再接続を試みる
         public void Reconnect()
         {
-            webSocketManager.Disconnect();
+            // 接続中または接続処理中の場合は、まず切断する
+            if (TiktokWebSocketService.IsConnected || TiktokWebSocketService.IsConnecting)
+            {
+                Debug.Log("再接続のため、現在の接続を切断します。");
+                webSocketManager.Disconnect();
+            }
+            
+            // 切断処理中の場合は、TiktokWebSocketServiceが自動的に再接続するので、
+            // ここでは何もしない
+            if (TiktokWebSocketService.IsDisconnecting)
+            {
+                Debug.Log("切断処理中のため、切断完了後に自動的に再接続します。");
+                return;
+            }
+            
+            // 接続していない場合は、直接接続する
+            Debug.Log("WebSocketサーバーに再接続します。");
             webSocketManager.Connect();
         }
 

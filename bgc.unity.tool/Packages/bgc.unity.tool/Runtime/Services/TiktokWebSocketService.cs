@@ -35,6 +35,12 @@ namespace bgc.unity.tool.Services
         
         private static WebSocket ws;
         private static bool isConnected = false;
+        // 接続処理中かどうかを示すフラグ
+        private static bool isConnecting = false;
+        // 切断処理中かどうかを示すフラグ
+        private static bool isDisconnecting = false;
+        // 再接続が必要かどうかを示すフラグ
+        private static bool reconnectRequested = false;
         
         // メインスレッドで処理するためのメッセージキュー
         private static readonly Queue<string> messageQueue = new Queue<string>();
@@ -76,8 +82,29 @@ namespace bgc.unity.tool.Services
         // 接続状態を取得するプロパティ
         public static bool IsConnected => isConnected;
         
+        // 接続中かどうかを取得するプロパティ
+        public static bool IsConnecting => isConnecting;
+        
+        // 切断中かどうかを取得するプロパティ
+        public static bool IsDisconnecting => isDisconnecting;
+        
         public static void Connect()
         {
+            // 既に接続中または接続処理中の場合は何もしない
+            if (isConnected || isConnecting)
+            {
+                Debug.LogWarning("既に接続済みまたは接続処理中です。");
+                return;
+            }
+            
+            // 切断処理中の場合は、再接続フラグを立てて終了
+            if (isDisconnecting)
+            {
+                Debug.Log("切断処理中のため、切断完了後に再接続します。");
+                reconnectRequested = true;
+                return;
+            }
+            
             // APIキーが設定されているか確認
             string apiKey = ApiKeyService.ApiKey;
             if (string.IsNullOrEmpty(apiKey) || apiKey == "xxxxxxxxxxx")
@@ -100,57 +127,98 @@ namespace bgc.unity.tool.Services
             // 接続先URLを username を付加して生成
             string fullUrl = baseUrl + Username;
 
-            if (isConnected)
-            {
-                Debug.LogWarning("既に接続済みです。");
-                return;
-            }
-
             Debug.Log("接続先URL: " + fullUrl);
 
             try
             {
+                // 接続処理中フラグを立てる
+                isConnecting = true;
+                
                 // 設定を事前にキャッシュ
                 verboseLogging = TiktokSettings.Instance.VerboseLogging;
                 
+                // 既存のWebSocketオブジェクトがあれば破棄
+                if (ws != null)
+                {
+                    try
+                    {
+                        ws.OnOpen -= OnWebSocketOpen;
+                        ws.OnMessage -= OnWebSocketMessage;
+                        ws.OnError -= OnWebSocketError;
+                        ws.OnClose -= OnWebSocketClose;
+                        ws = null;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError("既存のWebSocketオブジェクトの破棄中にエラーが発生しました: " + ex.Message);
+                    }
+                }
+                
+                // 新しいWebSocketオブジェクトを作成
                 ws = new WebSocket(fullUrl);
 
-                ws.OnOpen += (sender, e) => {
-                    isConnected = true;
-                    Debug.Log("WebSocketサーバーに接続しました: " + fullUrl);
-                    SendApiKeyAndUsername();
-                };
-
-                ws.OnMessage += (sender, e) => {
-                    // メッセージをキューに追加するだけ（メインスレッドでの処理は別途行う）
-                    lock (messageQueue)
-                    {
-                        messageQueue.Enqueue(e.Data);
-                    }
-                };
-
-                ws.OnError += (sender, e) => {
-                    string errorMessage = "WebSocketエラー: " + e.Message;
-                    Debug.LogError(errorMessage);
-                    OnConnectionError?.Invoke(errorMessage);
-                };
-
-                ws.OnClose += (sender, e) => {
-                    isConnected = false;
-                    Debug.Log("WebSocketサーバーから切断されました。理由: " + e.Reason);
-                    if (!string.IsNullOrEmpty(e.Reason))
-                    {
-                        OnConnectionError?.Invoke("切断理由: " + e.Reason);
-                    }
-                };
+                // イベントハンドラを登録
+                ws.OnOpen += OnWebSocketOpen;
+                ws.OnMessage += OnWebSocketMessage;
+                ws.OnError += OnWebSocketError;
+                ws.OnClose += OnWebSocketClose;
 
                 ws.Connect();
             }
             catch (Exception e)
             {
+                isConnecting = false;
                 string errorMessage = "WebSocketサーバーへの接続に失敗しました: " + e.Message;
                 Debug.LogError(errorMessage);
                 OnConnectionError?.Invoke(errorMessage);
+            }
+        }
+        
+        // WebSocketのOpenイベントハンドラ
+        private static void OnWebSocketOpen(object sender, EventArgs e)
+        {
+            isConnected = true;
+            isConnecting = false;
+            Debug.Log("WebSocketサーバーに接続しました: " + baseUrl + Username);
+            SendApiKeyAndUsername();
+        }
+        
+        // WebSocketのMessageイベントハンドラ
+        private static void OnWebSocketMessage(object sender, MessageEventArgs e)
+        {
+            // メッセージをキューに追加するだけ（メインスレッドでの処理は別途行う）
+            lock (messageQueue)
+            {
+                messageQueue.Enqueue(e.Data);
+            }
+        }
+        
+        // WebSocketのErrorイベントハンドラ
+        private static void OnWebSocketError(object sender, ErrorEventArgs e)
+        {
+            string errorMessage = "WebSocketエラー: " + e.Message;
+            Debug.LogError(errorMessage);
+            OnConnectionError?.Invoke(errorMessage);
+        }
+        
+        // WebSocketのCloseイベントハンドラ
+        private static void OnWebSocketClose(object sender, CloseEventArgs e)
+        {
+            isConnected = false;
+            isDisconnecting = false;
+            Debug.Log("WebSocketサーバーから切断されました。理由: " + e.Reason);
+            
+            if (!string.IsNullOrEmpty(e.Reason))
+            {
+                OnConnectionError?.Invoke("切断理由: " + e.Reason);
+            }
+            
+            // 再接続が要求されていた場合は接続を試みる
+            if (reconnectRequested)
+            {
+                reconnectRequested = false;
+                Debug.Log("再接続を実行します。");
+                Connect();
             }
         }
         
@@ -278,14 +346,45 @@ namespace bgc.unity.tool.Services
         
         public static void Disconnect()
         {
-            if (ws != null && isConnected)
+            // 既に切断済みまたは切断処理中の場合は何もしない
+            if (!isConnected && !isConnecting || isDisconnecting)
             {
-                ws.Close();
-                isConnected = false;
+                Debug.LogWarning("接続がないか、既に切断されています。");
+                return;
+            }
+            
+            // 再接続フラグをリセット
+            reconnectRequested = false;
+            
+            if (ws != null)
+            {
+                try
+                {
+                    // 切断処理中フラグを立てる
+                    isDisconnecting = true;
+                    
+                    // 接続処理中の場合は、接続処理中フラグをリセット
+                    if (isConnecting)
+                    {
+                        isConnecting = false;
+                    }
+                    
+                    ws.Close();
+                    Debug.Log("WebSocketサーバーへの切断を開始しました。");
+                }
+                catch (Exception ex)
+                {
+                    isDisconnecting = false;
+                    isConnected = false;
+                    Debug.LogError("WebSocketの切断中にエラーが発生しました: " + ex.Message);
+                }
             }
             else
             {
-                Debug.LogWarning("接続がないか、既に切断されています。");
+                isConnected = false;
+                isConnecting = false;
+                isDisconnecting = false;
+                Debug.LogWarning("WebSocketオブジェクトが存在しません。");
             }
         }
         
@@ -293,15 +392,41 @@ namespace bgc.unity.tool.Services
         {
             try
             {
+                // 再接続フラグをリセット
+                reconnectRequested = false;
+                
                 if (ws != null)
                 {
-                    if (isConnected)
+                    if (isConnected || isConnecting)
                     {
-                        ws.Close();
-                        isConnected = false;
+                        try
+                        {
+                            ws.Close();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError("WebSocketのクローズ中にエラーが発生しました: " + ex.Message);
+                        }
                     }
+                    
+                    try
+                    {
+                        ws.OnOpen -= OnWebSocketOpen;
+                        ws.OnMessage -= OnWebSocketMessage;
+                        ws.OnError -= OnWebSocketError;
+                        ws.OnClose -= OnWebSocketClose;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError("WebSocketのイベントハンドラ解除中にエラーが発生しました: " + ex.Message);
+                    }
+                    
                     ws = null;
                 }
+                
+                isConnected = false;
+                isConnecting = false;
+                isDisconnecting = false;
             }
             catch (Exception ex)
             {

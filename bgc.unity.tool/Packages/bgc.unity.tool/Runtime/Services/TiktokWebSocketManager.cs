@@ -74,6 +74,16 @@ namespace bgc.unity.tool.Services
         /// </summary>
         public bool IsConnected => TiktokWebSocketService.IsConnected;
         
+        /// <summary>
+        /// 接続処理中かどうかを取得します
+        /// </summary>
+        public bool IsConnecting => TiktokWebSocketService.IsConnecting;
+        
+        /// <summary>
+        /// 切断処理中かどうかを取得します
+        /// </summary>
+        public bool IsDisconnecting => TiktokWebSocketService.IsDisconnecting;
+        
         private void OnDestroy()
         {
             // コンポーネントが破棄されるときに接続を切断
