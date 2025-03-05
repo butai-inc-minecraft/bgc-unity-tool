@@ -62,6 +62,15 @@ public class Handler : MonoBehaviour
     // ギフトのストリーク（連続送信）を追跡するための辞書
     private Dictionary<string, GameObject> giftStreaks = new Dictionary<string, GameObject>();
 
+    // 接続状態表示用の変数
+    [Header("接続状態表示")]
+    [SerializeField] private Image connectionStatusIndicator;
+    [SerializeField] private Color notConnectedColor = Color.white;     // 接続していない時：白
+    [SerializeField] private Color connectedColor = new Color(1.0f, 0.5f, 0.0f); // 接続中：オレンジ
+    [SerializeField] private Color disconnectingColor = Color.red;      // 切断中：赤
+    [SerializeField] private float statusUpdateInterval = 0.5f;
+    private float statusUpdateTimer = 0f;
+
     private void Awake()
     {
         // new 演算子は使えないため、GetComponent で取得する
@@ -140,12 +149,20 @@ public class Handler : MonoBehaviour
             usernameInputField.text = defaultUsername;
             Debug.Log("デフォルトユーザー名を設定: " + defaultUsername);
         }
+
+        // 接続状態の更新を開始
+        StartCoroutine(UpdateConnectionStatusRoutine());
     }
     
     private void Update()
     {
-        // 接続状態を更新
-        UpdateConnectionStatus();
+        // 接続状態の更新タイマー
+        statusUpdateTimer += Time.deltaTime;
+        if (statusUpdateTimer >= statusUpdateInterval)
+        {
+            UpdateConnectionStatus();
+            statusUpdateTimer = 0f;
+        }
     }
 
     // ボタンから呼び出される場合の処理
@@ -354,14 +371,16 @@ public class Handler : MonoBehaviour
         }
     }
     
-    // エラーメッセージを表示する
+    // エラーメッセージを表示
     private void ShowErrorMessage(string message)
     {
         if (errorMessageText != null)
         {
             errorMessageText.text = "エラー: " + message;
-            errorMessageText.color = Color.red;
+            errorMessageText.color = disconnectingColor; // 赤色を使用
         }
+        
+        Debug.LogError("エラー: " + message);
     }
     
     // エラーメッセージをクリアする
@@ -378,8 +397,64 @@ public class Handler : MonoBehaviour
     {
         if (connectionStatusText != null)
         {
-            connectionStatusText.text = "接続状態: " + (BgcTiktokWebSocket.IsConnected ? "接続中" : "未接続");
-            connectionStatusText.color = BgcTiktokWebSocket.IsConnected ? Color.green : Color.gray;
+            string statusText;
+            Color statusColor;
+            
+            if (TiktokWebSocketService.IsConnected || TiktokWebSocketService.IsConnecting)
+            {
+                // 接続中または接続処理中はオレンジ
+                statusText = "接続状態: 接続中";
+                statusColor = connectedColor;
+            }
+            else if (TiktokWebSocketService.IsDisconnecting)
+            {
+                // 切断中は赤
+                statusText = "接続状態: 切断中";
+                statusColor = disconnectingColor;
+            }
+            else
+            {
+                // 未接続は白
+                statusText = "接続状態: 未接続";
+                statusColor = notConnectedColor;
+            }
+            
+            connectionStatusText.text = statusText;
+            connectionStatusText.color = statusColor;
+        }
+        
+        // 接続状態インジケーターの更新
+        if (connectionStatusIndicator != null)
+        {
+            Color indicatorColor;
+            
+            if (TiktokWebSocketService.IsConnected || TiktokWebSocketService.IsConnecting)
+            {
+                // 接続中または接続処理中はオレンジ
+                indicatorColor = connectedColor;
+            }
+            else if (TiktokWebSocketService.IsDisconnecting)
+            {
+                // 切断中は赤
+                indicatorColor = disconnectingColor;
+            }
+            else
+            {
+                // 未接続は白
+                indicatorColor = notConnectedColor;
+            }
+            
+            connectionStatusIndicator.color = indicatorColor;
+        }
+        
+        // 接続ボタンのテキスト更新
+        if (connectButton != null)
+        {
+            Text buttonText = connectButton.GetComponentInChildren<Text>();
+            if (buttonText != null)
+            {
+                buttonText.text = TiktokWebSocketService.IsConnected ? "切断" : "接続";
+            }
         }
     }
     
@@ -1009,5 +1084,15 @@ public class Handler : MonoBehaviour
 
         // 必要に応じて追加の処理をここに実装
         // 例: フォローカウントの更新、特別なエフェクトの表示など
+    }
+
+    // 接続状態を更新するコルーチン
+    private IEnumerator UpdateConnectionStatusRoutine()
+    {
+        while (true)
+        {
+            UpdateConnectionStatus();
+            yield return new WaitForSeconds(statusUpdateInterval);
+        }
     }
 }
