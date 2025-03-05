@@ -5,32 +5,16 @@ using UnityEngine.UI;
 using bgc.unity.tool;
 using bgc.unity.tool.Services;
 using bgc.unity.tool.Models;
-// using bgc.unity.tool.Utils;
 
 public class Handler : MonoBehaviour
 {
-    // 同一 GameObject にアタッチされた BgcTiktokWebSocket コンポーネントを取得
     private BgcTiktokWebSocket bgcTiktokWebSocket;
-    
-    // UI の InputField（インスペクターでアサイン）
     [SerializeField] private InputField usernameInputField;
-    
-    // オプション：ボタンを使う場合はインスペクターでアサイン
     [SerializeField] private Button connectButton;
-    
-    // エラーメッセージを表示するテキスト
     [SerializeField] private Text errorMessageText;
-    
-    // 接続状態を表示するテキスト
     [SerializeField] private Text connectionStatusText;
-    
-    // チャットメッセージを表示するテキスト（オプション）
     [SerializeField] private Text chatMessageText;
-    
-    // 視聴者数を表示するテキスト
     [SerializeField] private Text viewerCountText;
-    
-    // いいね数を表示するテキスト
     [SerializeField] private Text likeCountText;
     
     // コメントログとギフトログのUI
@@ -73,12 +57,9 @@ public class Handler : MonoBehaviour
 
     private void Awake()
     {
-        // new 演算子は使えないため、GetComponent で取得する
         bgcTiktokWebSocket = GetComponent<BgcTiktokWebSocket>();
         if(bgcTiktokWebSocket == null)
         {
-            Debug.LogError("BgcTiktokWebSocket コンポーネントが見つかりません。");
-            // 初期化を試みる
             bgcTiktokWebSocket = gameObject.AddComponent<BgcTiktokWebSocket>();
             if (bgcTiktokWebSocket != null)
             {
