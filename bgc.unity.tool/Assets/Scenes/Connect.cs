@@ -57,19 +57,8 @@ public class Handler : MonoBehaviour
 
     private void Awake()
     {
-        bgcTiktokWebSocket = GetComponent<BgcTiktokWebSocket>();
-        if(bgcTiktokWebSocket == null)
-        {
-            bgcTiktokWebSocket = gameObject.AddComponent<BgcTiktokWebSocket>();
-            if (bgcTiktokWebSocket != null)
-            {
-                Debug.Log("BgcTiktokWebSocket コンポーネントを新たに追加しました。");
-            }
-            else
-            {
-                Debug.LogError("BgcTiktokWebSocket コンポーネントの追加に失敗しました。");
-            }
-        }
+        // シングルトンインスタンスを使用するように変更
+        bgcTiktokWebSocket = BgcTiktokWebSocket.Instance;
         
         // ScrollRectのContentフィールドをチェック
         if (chatScrollRect != null && chatScrollRect.content == null)

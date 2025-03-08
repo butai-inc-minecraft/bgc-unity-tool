@@ -14,6 +14,25 @@ namespace bgc.unity.tool
 
     public class BgcTiktokWebSocket : MonoBehaviour
     {
+        // シングルトンインスタンス
+        private static BgcTiktokWebSocket _instance;
+        
+        // シングルトンインスタンスへのアクセサ
+        public static BgcTiktokWebSocket Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    // シーン内にインスタンスがなければ作成
+                    GameObject go = new GameObject("BgcTiktokWebSocket");
+                    _instance = go.AddComponent<BgcTiktokWebSocket>();
+                    DontDestroyOnLoad(go); // シーン遷移時も破棄されないように
+                }
+                return _instance;
+            }
+        }
+        
         // 接続状態
         public static bool IsConnected => TiktokWebSocketService.IsConnected;
         
@@ -41,8 +60,21 @@ namespace bgc.unity.tool
         // TiktokWebSocketManagerのインスタンス
         private TiktokWebSocketManager webSocketManager;
         
+        // イベントハンドラが登録済みかどうかのフラグ
+        private bool eventHandlersRegistered = false;
+        
         void Awake()
         {
+            // 重複インスタンスのチェック
+            if (_instance != null && _instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            
+            _instance = this;
+            DontDestroyOnLoad(gameObject);
+            
             // TiktokWebSocketManagerのインスタンスを取得または作成
             webSocketManager = TiktokWebSocketManager.Instance;
         }
@@ -51,6 +83,22 @@ namespace bgc.unity.tool
         {
             // APIキーを読み込む
             ApiKeyService.LoadApiKey();
+            
+            // イベントハンドラが未登録の場合のみ登録
+            if (!eventHandlersRegistered)
+            {
+                RegisterEventHandlers();
+            }
+        }
+        
+        // イベントハンドラを登録する
+        private void RegisterEventHandlers()
+        {
+            // 既に登録済みの場合は何もしない
+            if (eventHandlersRegistered)
+            {
+                return;
+            }
             
             // TiktokWebSocketServiceのイベントをリッスン
             TiktokWebSocketService.OnGiftReceived += HandleGiftReceived;
@@ -61,6 +109,29 @@ namespace bgc.unity.tool
             TiktokWebSocketService.OnFollowReceived += HandleFollowReceived;
             TiktokWebSocketService.OnConnectionError += HandleConnectionError;
             
+            eventHandlersRegistered = true;
+            Debug.Log("BgcTiktokWebSocket: イベントハンドラを登録しました");
+        }
+        
+        // イベントハンドラを解除する
+        private void UnregisterEventHandlers()
+        {
+            if (!eventHandlersRegistered)
+            {
+                return;
+            }
+            
+            // イベントハンドラを解除
+            TiktokWebSocketService.OnGiftReceived -= HandleGiftReceived;
+            TiktokWebSocketService.OnRoomUserReceived -= HandleRoomUserReceived;
+            TiktokWebSocketService.OnLikeReceived -= HandleLikeReceived;
+            TiktokWebSocketService.OnChatReceived -= HandleChatReceived;
+            TiktokWebSocketService.OnShareReceived -= HandleShareReceived;
+            TiktokWebSocketService.OnFollowReceived -= HandleFollowReceived;
+            TiktokWebSocketService.OnConnectionError -= HandleConnectionError;
+            
+            eventHandlersRegistered = false;
+            Debug.Log("BgcTiktokWebSocket: イベントハンドラを解除しました");
         }
 
         // 外部から username を設定するための関数
@@ -150,23 +221,37 @@ namespace bgc.unity.tool
 
         void OnDestroy()
         {
+            // このインスタンスがシングルトンインスタンスの場合のみクリーンアップ
+            if (_instance == this)
+            {
+                try
+                {
+                    // イベントハンドラを解除
+                    UnregisterEventHandlers();
+                    
+                    // WebSocketをクリーンアップ
+                    TiktokWebSocketService.Cleanup();
+                    
+                    _instance = null;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError("BgcTiktokWebSocketのクリーンアップ中にエラーが発生しました: " + ex.Message);
+                }
+            }
+        }
+        
+        void OnApplicationQuit()
+        {
             try
             {
-                // イベントハンドラを解除
-                TiktokWebSocketService.OnGiftReceived -= HandleGiftReceived;
-                TiktokWebSocketService.OnRoomUserReceived -= HandleRoomUserReceived;
-                TiktokWebSocketService.OnLikeReceived -= HandleLikeReceived;
-                TiktokWebSocketService.OnChatReceived -= HandleChatReceived;
-                TiktokWebSocketService.OnShareReceived -= HandleShareReceived;
-                TiktokWebSocketService.OnFollowReceived -= HandleFollowReceived;
-                TiktokWebSocketService.OnConnectionError -= HandleConnectionError;
-                
-                // WebSocketをクリーンアップ
+                // アプリケーション終了時にクリーンアップ
+                UnregisterEventHandlers();
                 TiktokWebSocketService.Cleanup();
             }
             catch (Exception ex)
             {
-                Debug.LogError("BgcTiktokWebSocketのクリーンアップ中にエラーが発生しました: " + ex.Message);
+                Debug.LogError("アプリケーション終了時のクリーンアップ中にエラーが発生しました: " + ex.Message);
             }
         }
     }
