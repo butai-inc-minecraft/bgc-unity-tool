@@ -54,6 +54,9 @@ namespace bgc.unity.tool
         // フォロー受信時に発火するイベント
         public static event Action<Models.FollowMessage> OnFollowReceived;
         
+        // サブスクライブ受信時に発火するイベント
+        public static event Action<Models.SubscribeMessage> OnSubscribeReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -107,6 +110,7 @@ namespace bgc.unity.tool
             TiktokWebSocketService.OnChatReceived += HandleChatReceived;
             TiktokWebSocketService.OnShareReceived += HandleShareReceived;
             TiktokWebSocketService.OnFollowReceived += HandleFollowReceived;
+            TiktokWebSocketService.OnSubscribeReceived += HandleSubscribeReceived;
             TiktokWebSocketService.OnConnectionError += HandleConnectionError;
             
             eventHandlersRegistered = true;
@@ -128,6 +132,7 @@ namespace bgc.unity.tool
             TiktokWebSocketService.OnChatReceived -= HandleChatReceived;
             TiktokWebSocketService.OnShareReceived -= HandleShareReceived;
             TiktokWebSocketService.OnFollowReceived -= HandleFollowReceived;
+            TiktokWebSocketService.OnSubscribeReceived -= HandleSubscribeReceived;
             TiktokWebSocketService.OnConnectionError -= HandleConnectionError;
             
             eventHandlersRegistered = false;
@@ -180,6 +185,13 @@ namespace bgc.unity.tool
         {
             // 外部のイベントハンドラに転送
             OnFollowReceived?.Invoke(followMessage);
+        }
+        
+        // サブスクライブメッセージを受信したときの処理
+        private void HandleSubscribeReceived(Models.SubscribeMessage subscribeMessage)
+        {
+            // 外部のイベントハンドラに転送
+            OnSubscribeReceived?.Invoke(subscribeMessage);
         }
         
         // 接続エラーが発生したときの処理

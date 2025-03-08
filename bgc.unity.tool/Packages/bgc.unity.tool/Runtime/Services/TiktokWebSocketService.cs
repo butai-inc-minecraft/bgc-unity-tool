@@ -30,6 +30,9 @@ namespace bgc.unity.tool.Services
         // フォローメッセージ受信時に発火するイベント
         public static event Action<Models.FollowMessage> OnFollowReceived;
         
+        // サブスクライブメッセージ受信時に発火するイベント
+        public static event Action<Models.SubscribeMessage> OnSubscribeReceived;
+        
         // 接続エラー発生時に発火するイベント
         public static event Action<string> OnConnectionError;
         
@@ -330,6 +333,16 @@ namespace bgc.unity.tool.Services
                     {
                         Debug.Log($"フォローメッセージを受信: {followMsg.nickname}さんがライブ配信者をフォローしました");
                         OnFollowReceived?.Invoke(followMsg);
+                    }
+                }
+                else if (message.Contains("\"type\":\"subscribe\"") || message.Contains("\"type\": \"subscribe\""))
+                {
+                    // サブスクライブメッセージの処理
+                    Models.SubscribeMessage subscribeMsg = JsonUtility.FromJson<Models.SubscribeMessage>(message);
+                    if (subscribeMsg != null)
+                    {
+                        Debug.Log($"サブスクライブメッセージを受信: {subscribeMsg.nickname}さんが配信者にサブスクライブしました");
+                        OnSubscribeReceived?.Invoke(subscribeMsg);
                     }
                 }
                 else if (verboseLogging) // キャッシュした値を使用

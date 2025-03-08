@@ -103,6 +103,7 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnGiftReceived += HandleGiftReceived;
         BgcTiktokWebSocket.OnShareReceived += HandleShareReceived;
         BgcTiktokWebSocket.OnFollowReceived += HandleFollowReceived;
+        BgcTiktokWebSocket.OnSubscribeReceived += HandleSubscribeReceived;
         
         // ボタンがある場合は、リスナー登録を行う
         if (connectButton != null)
@@ -1016,6 +1017,7 @@ public class Handler : MonoBehaviour
         BgcTiktokWebSocket.OnGiftReceived -= HandleGiftReceived;
         BgcTiktokWebSocket.OnShareReceived -= HandleShareReceived;
         BgcTiktokWebSocket.OnFollowReceived -= HandleFollowReceived;
+        BgcTiktokWebSocket.OnSubscribeReceived -= HandleSubscribeReceived;
     }
 
     // シェアイベントを処理するメソッド
@@ -1054,6 +1056,24 @@ public class Handler : MonoBehaviour
 
         // 必要に応じて追加の処理をここに実装
         // 例: フォローカウントの更新、特別なエフェクトの表示など
+    }
+
+    // サブスクライブメッセージを受信したときの処理
+    private void HandleSubscribeReceived(SubscribeMessage subscribeMessage)
+    {
+        string userId = subscribeMessage.userId;
+        string nickname = subscribeMessage.nickname;
+        int subMonth = subscribeMessage.subMonth;
+        
+        // サブスクライブ情報をログに表示
+        Debug.Log($"🎁 {nickname}さんが配信者にサブスクライブしました！ サブスク月数: {subMonth}ヶ月目");
+        
+        // サブスクライブメッセージをチャットに表示
+        string subscribeText = $"{nickname}さんが配信者にサブスクライブしました！";
+        AddChatMessage(subscribeText);
+        
+        // サブスクライブ情報をチャットログに追加
+        AddChatLogItem(userId, nickname, subscribeMessage.uniqueId, $"[サブスクライブ] {subscribeText}");
     }
 
     // 接続状態を更新するコルーチン
