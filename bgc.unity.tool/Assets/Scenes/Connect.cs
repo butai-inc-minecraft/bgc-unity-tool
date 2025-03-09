@@ -247,12 +247,14 @@ public class Handler : MonoBehaviour
         int repeatCount = giftMessage.repeatCount;
         bool repeatEnd = giftMessage.repeatEnd;
         int giftType = giftMessage.giftType;
+        bool isSubscriber = giftMessage.isSubscriber;
 
         // ギフトアイコン
         string iconUrl = giftMessage.giftPictureUrl;
         
-        // ギフト情報をログに表示
-        Debug.Log($"🎁 {nickname}さんから{giftName}（ID:{giftId}, {diamondCount}ダイヤ）を{repeatCount}回受け取りました！ repeatEnd: {repeatEnd}, giftType: {giftType}");
+        // ギフト情報をログに表示（サブスク加入者かどうかも表示）
+        string subscriberStatus = isSubscriber ? "【サブスク加入者】" : "";
+        Debug.Log($"🎁 {subscriberStatus}{nickname}さんから{giftName}（ID:{giftId}, {diamondCount}ダイヤ）を{repeatCount}回受け取りました！ repeatEnd: {repeatEnd}, giftType: {giftType}");
 
         // バラが投げられた時
         if(giftName == "Rose"){
@@ -268,8 +270,8 @@ public class Handler : MonoBehaviour
         // ストリークIDを生成（ユーザーIDとギフトIDの組み合わせ）
         string streakId = userId + "_" + giftId;
         
-        // ギフトログに追加または更新
-        GameObject newGiftItem = AddGiftLogItem(userId, nickname, giftName, giftId, diamondCount, repeatCount, repeatEnd, iconUrl);
+        // ギフトログに追加または更新（サブスク加入者情報も渡す）
+        GameObject newGiftItem = AddGiftLogItem(userId, nickname, giftName, giftId, diamondCount, repeatCount, repeatEnd, iconUrl, isSubscriber);
         
         // repeatEndがtrueの場合の処理
         if (repeatEnd)
@@ -618,7 +620,7 @@ public class Handler : MonoBehaviour
     }
     
     // ギフトログにアイテムを追加または更新
-    private GameObject AddGiftLogItem(string userId, string username, string giftName, int giftId, int diamonds, int repeatCount, bool repeatEnd, string giftIconUrl)
+    private GameObject AddGiftLogItem(string userId, string username, string giftName, int giftId, int diamonds, int repeatCount, bool repeatEnd, string giftIconUrl, bool isSubscriber = false)
     {
         if (giftLogContainer == null)
         {
@@ -691,6 +693,9 @@ public class Handler : MonoBehaviour
             // ユーザーIDとギフトIDを設定（新規アイテムでも既存アイテムでも必ず設定）
             giftItemComponent.SetUserAndGiftId(userId, giftId);
             
+            // サブスク加入者の場合はユーザー名の前に[サブスク]を追加
+            string displayUsername = isSubscriber ? "[サブスク] " + username : username;
+            
             // ギフトアイコンがある場合は、画像をダウンロードして設定
             if (!string.IsNullOrEmpty(giftIconUrl))
             {
@@ -698,7 +703,7 @@ public class Handler : MonoBehaviour
                     if (sprite != null)
                     {
                         Debug.Log($"GiftItemPrefabコンポーネントにギフトアイコンを設定します");
-                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, sprite, repeatEnd);
+                        giftItemComponent.SetGiftInfo(displayUsername, giftName, diamonds, repeatCount, sprite, repeatEnd);
                         
                         // 画像が設定されたことを確認
                         Image giftIcon = giftItemComponent.GetGiftIcon();
@@ -725,16 +730,16 @@ public class Handler : MonoBehaviour
                     else
                     {
                         Debug.LogError($"ギフトアイコンのダウンロードに失敗しました: {giftIconUrl}");
-                        giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, null, repeatEnd);
+                        giftItemComponent.SetGiftInfo(displayUsername, giftName, diamonds, repeatCount, null, repeatEnd);
                     }
                 }));
             }
             else
             {
-                giftItemComponent.SetGiftInfo(username, giftName, diamonds, repeatCount, null, repeatEnd);
+                giftItemComponent.SetGiftInfo(displayUsername, giftName, diamonds, repeatCount, null, repeatEnd);
             }
             
-            Debug.Log($"GiftItemPrefabコンポーネントを使用: {username}, {giftName}, {diamonds}, {repeatCount}, アイコンURL: {giftIconUrl}, 新規アイテム: {isNewItem}, ストリーク終了: {repeatEnd}");
+            Debug.Log($"GiftItemPrefabコンポーネントを使用: {displayUsername}, {giftName}, {diamonds}, {repeatCount}, アイコンURL: {giftIconUrl}, 新規アイテム: {isNewItem}, ストリーク終了: {repeatEnd}");
             
             // テキストの色を強制的に設定
             Text[] allTexts = giftItem.GetComponentsInChildren<Text>();
@@ -757,7 +762,10 @@ public class Handler : MonoBehaviour
             
             if (texts.Length >= 3)
             {
-                texts[0].text = username + ":";
+                // サブスク加入者の場合はユーザー名の前に[サブスク]を追加
+                string displayUsername = isSubscriber ? "[サブスク] " + username : username;
+                
+                texts[0].text = displayUsername + ":";
                 texts[1].text = "Sent " + giftName;
                 texts[2].text = "Repeat: x" + repeatCount + "\nCost: " + diamonds + " Diamonds";
                 
@@ -834,7 +842,7 @@ public class Handler : MonoBehaviour
             }
             else if (texts.Length == 1)
             {
-                texts[0].text = username + ": Sent " + giftName + " (x" + repeatCount + ", " + diamonds + " Diamonds)";
+                texts[0].text = displayUsername + ": Sent " + giftName + " (x" + repeatCount + ", " + diamonds + " Diamonds)";
                 
                 // テキストの色を強制的に設定
                 texts[0].color = Color.black;

@@ -2,7 +2,7 @@
 
 ![BGC Unity Tool Logo](Documentation/Images/logo.webp)
 
-BGC Unity開発者専用ライブラリ
+BGC Unity 開発者専用ライブラリ
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.txt)  
 [![Unity](https://img.shields.io/badge/Unity-2020.3%2B-green.svg)](https://unity.com/)
@@ -11,7 +11,7 @@ BGC Unity開発者専用ライブラリ
 
 - [機能](#機能)
 - [インストール方法](#インストール方法)
-- [APIキーの設定](#apiキーの設定)
+- [API キーの設定](#apiキーの設定)
 - [基本的な使い方](#基本的な使い方)
 - [イベントハンドリング](#イベントハンドリング)
 - [接続状態の管理](#接続状態の管理)
@@ -31,6 +31,7 @@ BGC Unity開発者専用ライブラリ
   - **いいね**受信イベント
   - **フォロー**受信イベント
   - **シェア**受信イベント
+  - **サブスクライブ**受信イベント
   - **視聴者情報**受信イベント
 - 接続状態の管理と監視
 - エラーハンドリング
@@ -57,14 +58,14 @@ https://github.com/iy-tech-work/bgc-unity-tool.git?path=bgc.unity.tool/Packages/
 
 ---
 
-## APIキーの設定
+## API キーの設定
 
 ![create api key](Documentation/Images/config.png)
 
 ![create api key](Documentation/Images/apiConfig.png)
 
 1. Unity のツールバーから **BGC > TikTok > 設定ファイルを作成** を選択  
-   → 自動的に `Assets/Resources/TikTokSettings.asset` が作成されます。  
+   → 自動的に `Assets/Resources/TikTokSettings.asset` が作成されます。
 2. 作成されたアセットに API キーを設定してください。
 
 スクリプトから以下のようにと見込めます
@@ -77,7 +78,6 @@ ApiKeyService.LoadApiKey();
 ---
 
 ## 基本的な使い方
-
 
 具体的な実装は https://github.com/iy-tech-work/bgc-unity-tool/blob/main/bgc.unity.tool/Assets/Scenes/Connect.cs をご覧ください。
 
@@ -115,7 +115,7 @@ TiktokWebSocketManager.Instance.Disconnect();
 ### 1. イベントハンドラの登録
 
 以下のように、各種イベントハンドラを登録します。  
-※ 実装例では、主にギフト、チャット、いいね、視聴者情報、シェア、フォロー、接続エラーを処理しています。
+※ 実装例では、主にギフト、チャット、いいね、視聴者情報、シェア、フォロー、サブスクライブ、接続エラーを処理しています。
 
 ```csharp
 // イベントハンドラを登録
@@ -126,6 +126,7 @@ BgcTiktokWebSocket.OnRoomUserReceived += HandleRoomUserReceived;
 BgcTiktokWebSocket.OnConnectionError  += HandleConnectionError;
 BgcTiktokWebSocket.OnShareReceived    += HandleShareReceived;
 BgcTiktokWebSocket.OnFollowReceived   += HandleFollowReceived;
+BgcTiktokWebSocket.OnSubscribeReceived += HandleSubscribeReceived;
 ```
 
 ### 2. イベントハンドラの実装例
@@ -215,6 +216,21 @@ private void HandleFollowReceived(FollowMessage followMessage)
 }
 ```
 
+#### サブスクライブイベント
+
+```csharp
+private void HandleSubscribeReceived(SubscribeMessage subscribeMessage)
+{
+    if (subscribeMessage == null)
+    {
+        Debug.LogError("サブスクライブメッセージがnullです");
+        return;
+    }
+    Debug.Log($"サブスクライブイベントを受信しました: {subscribeMessage.userId}, {subscribeMessage.nickname}, サブスク月数: {subscribeMessage.subMonth}ヶ月目");
+    AddChatLogItem(subscribeMessage.userId, subscribeMessage.nickname, subscribeMessage.uniqueId, $"{subscribeMessage.nickname}さんが配信者にサブスクライブしました！");
+}
+```
+
 ---
 
 ## 接続状態の管理
@@ -248,7 +264,7 @@ private void UpdateConnectionStatus()
 private void HandleConnectionError(string errorMessage)
 {
     ShowErrorMessage(errorMessage);
-    
+
     // 自動再接続が有効の場合、一定時間後に再接続を試みる
     if (shouldAutoReconnect)
     {
@@ -370,12 +386,12 @@ TikTok WebSocket との接続を管理するメインコンポーネント。
 **メソッド**
 
 - `SetUsername(string username)`: TikTok のユーザー名を設定します.  
-  *使用例:*
+  _使用例:_
   ```csharp
   TiktokWebSocketManager.Instance.SetUsername("tiktok_username");
   ```
 - `Disconnect()`: WebSocket 接続を切断します.  
-  *使用例:*
+  _使用例:_
   ```csharp
   TiktokWebSocketManager.Instance.Disconnect();
   ```
@@ -389,6 +405,7 @@ TikTok WebSocket との接続を管理するメインコンポーネント。
 - `OnRoomUserReceived`: 視聴者情報受信時に発火するイベント.
 - `OnShareReceived`: シェア受信時に発火するイベント.
 - `OnFollowReceived`: フォロー受信時に発火するイベント.
+- `OnSubscribeReceived`: サブスクライブ受信時に発火するイベント.
 - `OnConnectionError`: 接続エラー発生時に発火するイベント.
 
 ### TiktokWebSocketManager
@@ -412,27 +429,37 @@ WebSocket の接続管理を行うシングルトンコンポーネント。
 
 #### GiftMessage
 
-- `userId`: ユーザーID  
-- `nickname`: ニックネーム  
-- `giftName`: ギフト名  
-- `diamondCount`: ダイヤモンド数  
-- `repeatCount`: 連続送信回数  
-- `repeatEnd`: 連続送信終了フラグ  
+- `userId`: ユーザー ID
+- `nickname`: ニックネーム
+- `giftName`: ギフト名
+- `diamondCount`: ダイヤモンド数
+- `repeatCount`: 連続送信回数
+- `repeatEnd`: 連続送信終了フラグ
 - `giftPictureUrl`: ギフト画像の URL
+- `isSubscriber`: サブスクライブ加入者かどうか
 
 #### ChatMessage
 
-- `userId`: ユーザーID  
-- `nickname`: ニックネーム  
-- `comment`: コメント内容  
+- `userId`: ユーザー ID
+- `nickname`: ニックネーム
+- `comment`: コメント内容
 - `uniqueId`: ユニークな識別子
 
 #### LikeMessage
 
-- `userId`: ユーザーID  
-- `nickname`: ニックネーム  
-- `likeCount`: いいね数  
+- `userId`: ユーザー ID
+- `nickname`: ニックネーム
+- `likeCount`: いいね数
 - `totalLikeCount`: 累計いいね数
+
+#### SubscribeMessage
+
+- `userId`: ユーザー ID
+- `nickname`: ニックネーム
+- `subMonth`: サブスクライブ月数
+- `oldSubscribeStatus`: 以前のサブスクライブ状態
+- `subscribingStatus`: 現在のサブスクライブ状態
+- `uniqueId`: ユニークな識別子
 
 ---
 
@@ -454,7 +481,7 @@ WebSocket の接続管理を行うシングルトンコンポーネント。
 ### メモリリークが発生する場合
 
 - イベントハンドラの解除を必ず行ってください.
-  *例:*
+  _例:_
   ```csharp
   private void OnDestroy()
   {
@@ -465,6 +492,7 @@ WebSocket の接続管理を行うシングルトンコンポーネント。
       BgcTiktokWebSocket.OnConnectionError  -= HandleConnectionError;
       BgcTiktokWebSocket.OnShareReceived    -= HandleShareReceived;
       BgcTiktokWebSocket.OnFollowReceived   -= HandleFollowReceived;
+      BgcTiktokWebSocket.OnSubscribeReceived -= HandleSubscribeReceived;
   }
   ```
 
