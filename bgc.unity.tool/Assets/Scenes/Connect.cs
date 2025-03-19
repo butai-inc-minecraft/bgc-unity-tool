@@ -760,10 +760,11 @@ public class Handler : MonoBehaviour
             Text[] texts = giftItem.GetComponentsInChildren<Text>();
             Debug.Log($"ギフトテキストコンポーネント数: {texts.Length}");
             
+            // サブスク加入者の場合はユーザー名の前に[サブスク]を追加
+            string displayUsername = isSubscriber ? "[サブスク] " + username : username;
+            
             if (texts.Length >= 3)
             {
-                // サブスク加入者の場合はユーザー名の前に[サブスク]を追加
-                string displayUsername = isSubscriber ? "[サブスク] " + username : username;
                 
                 texts[0].text = displayUsername + ":";
                 texts[1].text = "Sent " + giftName;
