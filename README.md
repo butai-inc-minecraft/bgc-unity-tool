@@ -41,7 +41,7 @@ BGC Unity 開発者専用ライブラリ
 
 ## インストール方法
 
-### Package Manager を使用する場合
+### Package Manager を使用する場合（推奨）
 
 1. Unity Editor を開き、 **Window > Package Manager** を選択
 2. 「+」ボタンをクリックし、「Add package from git URL...」を選択
@@ -50,12 +50,12 @@ BGC Unity 開発者専用ライブラリ
 ```
 https://github.com/iy-tech-work/bgc-unity-tool.git?path=bgc.unity.tool/Packages/bgc.unity.tool
 ```
-
-### or 手動インストール
+### 手動インストール（非推奨）
 
 1. このリポジトリをクローンまたはダウンロード
 2. `bgc.unity.tool/Packages/bgc.unity.tool` フォルダをプロジェクトの `Packages` フォルダにコピー
 
+**注意:** 手動インストールは非推奨です。Package Manager を使用する方法が推奨されます。これは、Package Manager を使用することで、依存関係の管理や更新が簡単に行えるため、開発者の皆さんがスムーズにご対応いただけるためです。
 ---
 
 ## API キーの設定
@@ -97,15 +97,15 @@ DontDestroyOnLoad(go); // シーン遷移時も保持
 ```csharp
 // ユーザー名を設定して接続
 string username = "tiktok_username";
-TiktokWebSocketManager.Instance.SetUsername(username);
-TiktokWebSocketManager.Instance.Connect();
+BgcTiktokWebSocket.Instance.SetUsername(username);
+BgcTiktokWebSocket.Instance.Connect();
 ```
 
 ### 3. 切断処理
 
 ```csharp
 // 切断
-TiktokWebSocketManager.Instance.Disconnect();
+BgcTiktokWebSocket.Instance.Disconnect();
 ```
 
 ---
@@ -240,12 +240,12 @@ private void HandleSubscribeReceived(SubscribeMessage subscribeMessage)
 ```csharp
 private void UpdateConnectionStatus()
 {
-    if (TiktokWebSocketService.IsConnected || TiktokWebSocketService.IsConnecting)
+    if (BgcTiktokWebSocket.Instance.IsConnected || BgcTiktokWebSocket.Instance.IsConnecting)
     {
         statusText.text  = "接続状態: 接続中";
         statusText.color = connectedColor; // オレンジ
     }
-    else if (TiktokWebSocketService.IsDisconnecting)
+    else if (BgcTiktokWebSocket.Instance.IsDisconnecting)
     {
         statusText.text  = "接続状態: 切断中";
         statusText.color = disconnectingColor; // 赤
@@ -275,7 +275,7 @@ private void HandleConnectionError(string errorMessage)
 private IEnumerator TryReconnect()
 {
     yield return new WaitForSeconds(reconnectDelay);
-    ConnectToWebSocket(currentUsername);
+    BgcTiktokWebSocket.Instance.Reconnect();
 }
 ```
 
@@ -388,12 +388,12 @@ TikTok WebSocket との接続を管理するメインコンポーネント。
 - `SetUsername(string username)`: TikTok のユーザー名を設定します.  
   _使用例:_
   ```csharp
-  TiktokWebSocketManager.Instance.SetUsername("tiktok_username");
+  BgcTiktokWebSocket.Instance.SetUsername("tiktok_username");
   ```
 - `Disconnect()`: WebSocket 接続を切断します.  
   _使用例:_
   ```csharp
-  TiktokWebSocketManager.Instance.Disconnect();
+  BgcTiktokWebSocket.Instance.Disconnect();
   ```
 - `Reconnect()`: WebSocket 接続を再接続します.
 
