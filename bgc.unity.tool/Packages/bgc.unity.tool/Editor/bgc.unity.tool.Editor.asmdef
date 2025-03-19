@@ -1,0 +1,18 @@
+{
+    "name": "bgc.unity.tool.Editor",
+    "rootNamespace": "bgc.unity.tool.Editor",
+    "references": [
+        "bgc.unity.tool.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
