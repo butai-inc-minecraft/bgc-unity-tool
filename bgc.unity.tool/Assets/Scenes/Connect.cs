@@ -248,13 +248,14 @@ public class Handler : MonoBehaviour
         bool repeatEnd = giftMessage.repeatEnd;
         int giftType = giftMessage.giftType;
         bool isSubscriber = giftMessage.isSubscriber;
+        int executionCount = giftMessage.ExecutionCount;
 
         // ギフトアイコン
         string iconUrl = giftMessage.giftPictureUrl;
         
         // ギフト情報をログに表示（サブスク加入者かどうかも表示）
         string subscriberStatus = isSubscriber ? "【サブスク加入者】" : "";
-        Debug.Log($"🎁 {subscriberStatus}{nickname}さんから{giftName}（ID:{giftId}, {diamondCount}ダイヤ）を{repeatCount}回受け取りました！ repeatEnd: {repeatEnd}, giftType: {giftType}");
+        Debug.Log($"🎁 {subscriberStatus}{nickname}さんから{giftName}（ID:{giftId}, {diamondCount}ダイヤ）を{repeatCount}回受け取りました！ repeatEnd: {repeatEnd}, giftType: {giftType}, executionCount: {executionCount}");
 
         // バラが投げられた時
         if(giftName == "Rose"){
@@ -272,7 +273,14 @@ public class Handler : MonoBehaviour
         
         // ギフトログに追加または更新（サブスク加入者情報も渡す）
         GameObject newGiftItem = AddGiftLogItem(userId, nickname, giftName, giftId, diamondCount, repeatCount, repeatEnd, iconUrl, isSubscriber);
-        
+
+        // 連続投げに対応した実行回数分処理を行う
+        // こちらを使う場合以下のrepeatEndの処理不要
+        for(int i = 0; i < executionCount; i++){
+            // アクションを実行する ログで実行回数を表示
+            Debug.Log($"🎁 実行中 {i + 1}/{executionCount}");
+        }
+
         // repeatEndがtrueの場合の処理
         if (repeatEnd)
         {

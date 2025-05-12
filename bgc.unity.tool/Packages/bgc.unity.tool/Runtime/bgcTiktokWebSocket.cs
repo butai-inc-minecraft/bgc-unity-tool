@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections.Generic;
 using bgc.unity.tool.Models;
 using bgc.unity.tool.Services;
 
@@ -65,6 +66,9 @@ namespace bgc.unity.tool
         
         // イベントハンドラが登録済みかどうかのフラグ
         private bool eventHandlersRegistered = false;
+        
+        // コンボ管理用の辞書
+        private Dictionary<string, int> comboMap = new Dictionary<string, int>();
         
         void Awake()
         {
@@ -148,8 +152,51 @@ namespace bgc.unity.tool
         // ギフトメッセージを受信したときの処理
         private void HandleGiftReceived(Models.GiftMessage giftMessage)
         {
-            // 外部のイベントハンドラに転送
+            string key = $"{giftMessage.userId}_{giftMessage.giftId}";
+            
+            int executionCount = UpdateCombo(
+                giftMessage.userId, 
+                giftMessage.giftId.ToString(), 
+                giftMessage.repeatCount, 
+                giftMessage.repeatEnd
+            );
+
+            giftMessage.ExecutionCount = executionCount;
+            
             OnGiftReceived?.Invoke(giftMessage);
+        }
+        
+        private int UpdateCombo(string userId, string giftId, int newCombo, bool isRepeatEnd)
+        {
+            string comboKey = $"{userId}_{giftId}";
+            
+            int currentCombo = 0;
+            comboMap.TryGetValue(comboKey, out currentCombo);
+            
+            if (isRepeatEnd)
+            {
+                if (currentCombo == newCombo)
+                {
+                    comboMap.Remove(comboKey);
+                    return 0;
+                }
+                return 0;
+            }
+            
+            int diff = newCombo - currentCombo;
+            
+            if (diff > 0)
+            {
+                comboMap[comboKey] = newCombo;
+                return diff;
+            }
+            
+            if (isRepeatEnd)
+            {
+                comboMap.Remove(comboKey);
+            }
+
+            return 1;
         }
         
         // 部屋の視聴者情報を受信したときの処理
