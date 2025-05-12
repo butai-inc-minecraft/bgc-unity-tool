@@ -248,7 +248,7 @@ public class Handler : MonoBehaviour
         bool repeatEnd = giftMessage.repeatEnd;
         int giftType = giftMessage.giftType;
         bool isSubscriber = giftMessage.isSubscriber;
-        int executionCount = giftMessage.ExecutionCount;
+        int executionCount = giftMessage.executionCount;
 
         // ギフトアイコン
         string iconUrl = giftMessage.giftPictureUrl;

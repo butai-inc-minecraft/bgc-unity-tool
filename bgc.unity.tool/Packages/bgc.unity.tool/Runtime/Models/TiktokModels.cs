@@ -44,7 +44,7 @@ namespace bgc.unity.tool.Models
         public string receiverUserId;
         public string profileName;
         public int combo;
-        public int ExecutionCount;
+        public int executionCount;
     }
 
     [Serializable]
