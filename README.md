@@ -140,10 +140,22 @@ private void HandleGiftReceived(GiftMessage giftMessage)
     string nickname  = giftMessage.nickname;
     string giftName  = giftMessage.giftName;
     int diamondCount = giftMessage.diamondCount;
+    int executionCount = giftMessage.executionCount;
 
-    Debug.Log($"{nickname}さんから{giftName}（{diamondCount}ダイヤ）を受け取りました！");
+    Debug.Log($"{nickname}さんから{giftName}（{diamondCount}ダイヤ）を受け取りました！実行回数: {executionCount}");
 
-    // UIの更新やゲーム内アクションのトリガーなどを実装
+    ExecuteGiftAction(nickname, giftName, diamondCount, executionCount);
+}
+
+private void ExecuteGiftAction(string nickname, string giftName, int diamondCount, int executionCount)
+{
+    for (int i = 0; i < executionCount; i++)
+    {
+        Debug.Log($"アクション実行 [{i+1}/{executionCount}]: {nickname}さんの{giftName}（{diamondCount}ダイヤ）");
+
+        // ここに実際のアクションを実装
+        // 例: 効果音を鳴らす、エフェクトを表示する、ゲーム内アイテムを生成するなど
+    }
 }
 ```
 
@@ -437,6 +449,7 @@ WebSocket の接続管理を行うシングルトンコンポーネント。
 - `repeatEnd`: 連続送信終了フラグ
 - `giftPictureUrl`: ギフト画像の URL
 - `isSubscriber`: サブスクライブ加入者かどうか
+- `executionCount`: 実行回数
 
 #### ChatMessage
 

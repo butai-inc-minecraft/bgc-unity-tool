@@ -161,7 +161,7 @@ namespace bgc.unity.tool
                 giftMessage.repeatEnd
             );
 
-            giftMessage.ExecutionCount = executionCount;
+            giftMessage.executionCount = executionCount;
             
             OnGiftReceived?.Invoke(giftMessage);
         }
