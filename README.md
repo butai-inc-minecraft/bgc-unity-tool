@@ -48,7 +48,7 @@ BGC Unity 開発者専用ライブラリ
 3. 以下の URL を入力して「Add」をクリック
 
 ```
-https://github.com/iy-tech-work/bgc-unity-tool.git?path=bgc.unity.tool/Packages/bgc.unity.tool
+https://github.com/butai-inc-minecraft/bgc-unity-tool.git?path=bgc.unity.tool/Packages/bgc.unity.tool
 ```
 ### 手動インストール（非推奨）
 
@@ -79,7 +79,7 @@ ApiKeyService.LoadApiKey();
 
 ## 基本的な使い方
 
-具体的な実装は https://github.com/iy-tech-work/bgc-unity-tool/blob/main/bgc.unity.tool/Assets/Scenes/Connect.cs をご覧ください。
+具体的な実装は https://github.com/butai-inc-minecraft/bgc-unity-tool/blob/main/bgc.unity.tool/Assets/Scenes/Connect.cs をご覧ください。
 
 ### 1. BgcTiktokWebSocket コンポーネントの追加
 
